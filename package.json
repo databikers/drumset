@@ -32,9 +32,5 @@
   "repository": {
     "type": "git",
     "url": "git@github.com:Paul-Lazunko/basic-npm-package.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Paul-Lazunko/basic-npm-package/issues"
-  },
-  "homepage": "https://github.com/Paul-Lazunko/basic-npm-package"
+  }
 }
