@@ -1,0 +1,40 @@
+{
+  "name": "basic-npm-package",
+  "description": "",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Pavlo Lazunko",
+  "license": "MIT",
+  "scripts": {
+    "build": "rm -rf dist && tsc && tsc-alias && eslint src/**/*.ts{,x}",
+    "eslint": "eslint src --ext .ts",
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "runtime": "node dist/index.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "20.10.6",
+    "@types/prettier": "2.6.0",
+    "@typescript-eslint/eslint-plugin": "6.17.0",
+    "@typescript-eslint/parser": "6.17.0",
+    "eslint": "8.47.0",
+    "husky": "3.0.0",
+    "ts-node": "10.9.2",
+    "tsc-alias": "1.8.10",
+    "typescript": "5.3.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run eslint"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Paul-Lazunko/basic-npm-package.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Paul-Lazunko/basic-npm-package/issues"
+  },
+  "homepage": "https://github.com/Paul-Lazunko/basic-npm-package"
+}

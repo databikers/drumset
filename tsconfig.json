@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "lib": [ "ES2022" ],
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "target": "ES2022",
+    "declaration": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@const": [
+        "src/constants"
+      ],
+      "@config": [
+        "src/config"
+      ],
+      "@dto": [
+        "src/dto"
+      ],
+      "@helper": [
+        "src/helpers"
+      ],
+      "@options": [
+        "src/options"
+      ],
+      "@parameters": [
+        "src/parameters"
+      ],
+      "@factory": [
+        "src/factory"
+      ],
+    }
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
