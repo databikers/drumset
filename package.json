@@ -1,7 +1,14 @@
 {
-  "name": "basic-npm-package",
-  "description": "",
+  "name": "drumset",
   "version": "1.0.0",
+  "description": "This is a library specifically designed for implementing sagas in Node.js applications",
+  "keywords": [
+    "framework",
+    "saga",
+    "workflows",
+    "complex",
+    "transactions"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "Pavlo Lazunko",
@@ -12,10 +19,13 @@
     "test": "echo \"Error: no test specified\" && exit 0",
     "runtime": "node dist/index.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "uuid": "10.0.0"
+  },
   "devDependencies": {
     "@types/node": "20.10.6",
     "@types/prettier": "2.6.0",
+    "@types/uuid": "10.0.0",
     "@typescript-eslint/eslint-plugin": "6.17.0",
     "@typescript-eslint/parser": "6.17.0",
     "eslint": "8.47.0",
@@ -31,6 +41,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:Paul-Lazunko/basic-npm-package.git"
+    "url": "git@github.com:databikers/drumset.git"
   }
 }
