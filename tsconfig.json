@@ -18,14 +18,14 @@
       "@const": [
         "src/constants"
       ],
-      "@config": [
-        "src/config"
-      ],
-      "@dto": [
-        "src/dto"
+      "@framework": [
+        "src/framework"
       ],
       "@helper": [
         "src/helpers"
+      ],
+      "@node": [
+        "src/node"
       ],
       "@options": [
         "src/options"
@@ -33,9 +33,12 @@
       "@parameters": [
         "src/parameters"
       ],
-      "@factory": [
-        "src/factory"
+      "@queue": [
+        "src/queue"
       ],
+      "@saga": [
+        "src/saga"
+      ]
     }
   },
   "include": [
