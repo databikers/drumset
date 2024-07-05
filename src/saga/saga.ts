@@ -1,28 +1,38 @@
 import { EventEmitter } from 'events';
 import { v4 } from 'uuid'
+import { SagaOptions } from '@options';
+import { Executor, Facts } from '@parameters';
+import { defaultSagaOptions } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Node } from '@node';
-import { Executor, Facts } from '@parameters';
-import * as console from 'console';
 
 export class Saga<T, Nodes extends string> {
 
+  protected options: SagaOptions;
   protected eventEmitter: EventEmitter;
   protected nodes: Map<Nodes, Node<T, Nodes>>;
   protected meta: Map<Nodes, any>;
   protected framework: FrameworkInterface<T, Nodes>;
 
-  constructor() {
-    this.eventEmitter = new EventEmitter()
+  constructor(sagaOptions?: SagaOptions) {
+    this.options = sagaOptions ? { ...defaultSagaOptions, ...sagaOptions } : defaultSagaOptions;
+    this.eventEmitter = new EventEmitter();
     this.nodes = new Map<Nodes, Node<T, Nodes>>();
     this.meta = new Map<Nodes, any>();
-    this.framework = new Framework(this.nodes, this.eventEmitter);
+    this.framework = new Framework({
+      nodes: this.nodes,
+      eventEmitter: this.eventEmitter,
+      verbose: this.options.verbose,
+      logger: this.options.logger
+    });
   }
 
   addNode(node: Nodes, executor: Executor<T, Nodes>, factsMeta: any = {}){
     this.nodes.set(node, new Node<T, Nodes>({
       executor,
-      framework: this.framework
+      framework: this.framework,
+      verbose: this.options.verbose,
+      logger: this.options.logger
     }));
     this.meta.set(node, factsMeta);
   }
