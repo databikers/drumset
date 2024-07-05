@@ -35,6 +35,7 @@ export class Saga<T, Nodes extends string> {
       id: v4(),
       inUse: false,
       used: false,
+      currentNode: node,
       data,
       meta: meta || Object.assign({}, this.meta.get(node) || {})
     }
