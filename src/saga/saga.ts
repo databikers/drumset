@@ -33,6 +33,7 @@ export class Saga<T, Nodes extends string> {
     }
     const facts: Facts<T, Nodes> = {
       id: v4(),
+      inUse: false,
       data,
       meta: meta || Object.assign({}, this.meta.get(node) || {})
     }
