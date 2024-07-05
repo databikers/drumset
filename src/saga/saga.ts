@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { v4 } from 'uuid'
-import { Framework } from '@framework';
+import { Framework, FrameworkInterface } from '@framework';
 import { Node } from '@node';
 import { Executor, Facts } from '@parameters';
 import * as console from 'console';
@@ -10,7 +10,7 @@ export class Saga<T, Nodes extends string> {
   protected eventEmitter: EventEmitter;
   protected nodes: Map<Nodes, Node<T, Nodes>>;
   protected meta: Map<Nodes, any>;
-  protected framework: Framework<T, Nodes>;
+  protected framework: FrameworkInterface<T, Nodes>;
 
   constructor() {
     this.eventEmitter = new EventEmitter()
