@@ -1,5 +1,5 @@
 import { QueueProcessorOptions } from '@options';
-import { Facts, PseudoIntervalParams } from '@parameters';
+import { Facts, FactsMeta, PseudoIntervalParams } from '@parameters';
 import { pseudoInterval } from '@helper'
 import { Logger } from '@logger';
 
@@ -15,28 +15,31 @@ export class QueueProcessor<T, Nodes extends string> {
       executor,
       framework,
       verbose,
-      logger
+      logger,
     } = queueProcessorOptions;
-
     this.pseudoIntervalParams = {
       executor: async () => {
         const item: Facts<T, Nodes> = queue.dequeue();
         if (item) {
           item.inUse = false;
-          const now = new Date().getTime();
           const { currentNode, meta } = item;
           const {
             executeAfter,
             expireAfter,
             retries,
-            retriesLimit
-          } = meta[currentNode];
+            retriesLimit,
+            timeoutBetweenRetries,
+            lastRetryTime
+          } = meta;
+          const now = new Date().getTime();
           if (expireAfter && expireAfter < now) {
             framework.exit(item, new Error(`Facts ${item.id} was expired`));
           }
-          if (executeAfter && expireAfter > now) {
-            framework.next(currentNode, item);
-            return;
+          if (executeAfter && executeAfter > now) {
+            return framework.next(currentNode, item);
+          }
+          if  (lastRetryTime && (lastRetryTime - now < timeoutBetweenRetries)) {
+            return framework.next(currentNode, item);
           }
           try {
             await executor(
@@ -46,13 +49,18 @@ export class QueueProcessor<T, Nodes extends string> {
               },
               (error?: Error) => {
                 framework.exit(item, error);
-              })
+              },
+              (error?: Error) => {
+                framework.retry(currentNode, item, error);
+              }
+            )
           } catch(error) {
+            meta.lastRetryTime = now;
             if (retries < retriesLimit) {
-              meta[currentNode].retries =  meta[currentNode].retries + 1;
-              framework.next(currentNode, item)
+              meta.retries =  meta.retries + 1;
+              framework.next(currentNode, item);
             }
-            framework.exit(item, error)
+            framework.exit(item, error);
           }
         }
       },

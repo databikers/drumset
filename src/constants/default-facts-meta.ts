@@ -1,8 +1,11 @@
 import { FactsMetaKeys } from './facts-meta-keys';
+import { FactsMeta } from '@parameters';
 
-export const defaultFactsMeta: Record<FactsMetaKeys, number> = {
-  [FactsMetaKeys.RETRIES]: 0,
-  [FactsMetaKeys.RETRIES_LIMIT]: 0,
-  [FactsMetaKeys.EXPIRE_AFTER]: 0,
-  [FactsMetaKeys.EXECUTE_AFTER]: 0
+export const defaultFactsMeta: FactsMeta = {
+  retriesLimit: 0,
+  retries: 0,
+  lastRetryTime: 0,
+  expireAfter: 0,
+  executeAfter: 0,
+  timeoutBetweenRetries: 0
 }

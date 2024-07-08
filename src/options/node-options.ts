@@ -1,4 +1,4 @@
-import { Executor } from '@parameters';
+import { Executor, FactsMeta } from '@parameters';
 import { Logger } from '@logger';
 import { FrameworkInterface } from '@framework';
 

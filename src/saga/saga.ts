@@ -11,7 +11,7 @@ export class Saga<T, Nodes extends string> {
   protected options: SagaOptions;
   protected eventEmitter: EventEmitter;
   protected nodes: Map<Nodes, Node<T, Nodes>>;
-  protected meta: Map<Nodes, any>;
+  protected meta: Map<Nodes, Record<FactsMetaKeys, number>>;
   protected framework: FrameworkInterface<T, Nodes>;
 
   constructor(sagaOptions?: SagaOptions) {
@@ -23,7 +23,8 @@ export class Saga<T, Nodes extends string> {
       nodes: this.nodes,
       eventEmitter: this.eventEmitter,
       verbose: this.options.verbose,
-      logger: this.options.logger
+      logger: this.options.logger,
+      meta: this.meta
     });
   }
 
@@ -37,7 +38,7 @@ export class Saga<T, Nodes extends string> {
     this.meta.set(node, { ...defaultFactsMeta, ...factsMeta });
   }
 
-  process(node: Nodes, data: T, meta?: FactsMeta<Nodes>) {
+  process(node: Nodes, data: T, meta?: Partial<FactsMeta>) {
     if (!this.nodes.has(node)) {
       throw new Error(`Node ${node} doesn't exist`)
     }
@@ -47,7 +48,7 @@ export class Saga<T, Nodes extends string> {
       used: false,
       currentNode: node,
       data,
-      meta: meta && meta[node] || this.meta.get(node)
+      meta: meta as FactsMeta || this.meta.get(node)
     }
     return new Promise((resolve, reject) => {
       this.eventEmitter.on(facts.id, (error, facts) => {

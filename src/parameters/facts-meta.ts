@@ -1,3 +1,8 @@
-import { FactsMetaKeys } from '@const';
-
-export type FactsMeta<Nodes extends string> = Record<Nodes, Record<FactsMetaKeys, number>>;
+export type FactsMeta = {
+  expireAfter: number;
+  executeAfter: number;
+  retries: number;
+  retriesLimit: number;
+  timeoutBetweenRetries: number;
+  lastRetryTime: number;
+};
