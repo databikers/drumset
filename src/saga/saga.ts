@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 import { v4 } from 'uuid'
 import { SagaOptions } from '@options';
-import { Executor, Facts } from '@parameters';
-import { defaultSagaOptions } from '@const';
+import { Executor, Facts, FactsMeta } from '@parameters';
+import { defaultFactsMeta, defaultSagaOptions } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Node } from '@node';
 
@@ -27,7 +27,7 @@ export class Saga<T, Nodes extends string> {
     });
   }
 
-  addNode(node: Nodes, executor: Executor<T, Nodes>, factsMeta: any = {}){
+  addNode(node: Nodes, executor: Executor<T, Nodes>, factsMeta: any = defaultFactsMeta){
     this.nodes.set(node, new Node<T, Nodes>({
       executor,
       framework: this.framework,
@@ -37,7 +37,7 @@ export class Saga<T, Nodes extends string> {
     this.meta.set(node, factsMeta);
   }
 
-  process(node: Nodes, data: T, meta?: any) {
+  process(node: Nodes, data: T, meta?: FactsMeta<Nodes>) {
     if (!this.nodes.has(node)) {
       throw new Error(`Node ${node} doesn't exist`)
     }
@@ -47,7 +47,7 @@ export class Saga<T, Nodes extends string> {
       used: false,
       currentNode: node,
       data,
-      meta: meta || Object.assign({}, this.meta.get(node) || {})
+      meta: meta && meta[node] || this.meta.get(node)
     }
     return new Promise((resolve, reject) => {
       this.eventEmitter.on(facts.id, (error, facts) => {
