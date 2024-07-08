@@ -1,3 +1,3 @@
 import { FactsMetaKeys } from '@const';
 
-export type FactsMeta<Nodes> = Record<Nodes, Record<FactsMetaKeys, number>>;
+export type FactsMeta<Nodes extends string> = Record<Nodes, Record<FactsMetaKeys, number>>;
