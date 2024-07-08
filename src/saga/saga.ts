@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { v4 } from 'uuid'
 import { SagaOptions } from '@options';
 import { Executor, Facts, FactsMeta } from '@parameters';
-import { defaultFactsMeta, defaultSagaOptions } from '@const';
+import { defaultFactsMeta, defaultSagaOptions, FactsMetaKeys } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Node } from '@node';
 
@@ -27,14 +27,14 @@ export class Saga<T, Nodes extends string> {
     });
   }
 
-  addNode(node: Nodes, executor: Executor<T, Nodes>, factsMeta: any = defaultFactsMeta){
+  addNode(node: Nodes, executor: Executor<T, Nodes>, factsMeta: Partial<Record<FactsMetaKeys, number>> = defaultFactsMeta){
     this.nodes.set(node, new Node<T, Nodes>({
       executor,
       framework: this.framework,
       verbose: this.options.verbose,
       logger: this.options.logger
     }));
-    this.meta.set(node, factsMeta);
+    this.meta.set(node, { ...defaultFactsMeta, ...factsMeta });
   }
 
   process(node: Nodes, data: T, meta?: FactsMeta<Nodes>) {
