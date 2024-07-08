@@ -7,5 +7,5 @@ export const defaultFactsMeta: FactsMeta = {
   lastRetryTime: 0,
   expireAfter: 0,
   executeAfter: 0,
-  timeoutBetweenRetries: 0
-}
+  timeoutBetweenRetries: 0,
+};

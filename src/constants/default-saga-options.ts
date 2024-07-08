@@ -3,5 +3,5 @@ import { Logger } from '@logger';
 
 export const defaultSagaOptions: SagaOptions = {
   verbose: false,
-  logger: console as Logger
-}
+  logger: console as Logger,
+};

@@ -1,4 +1,3 @@
-import { FactsMeta } from './facts-meta';
 import { FactsMetaKeys } from '@const';
 
 export type Facts<T, Nodes extends string> = {
@@ -7,5 +6,5 @@ export type Facts<T, Nodes extends string> = {
   used: boolean;
   currentNode: Nodes;
   meta: Record<FactsMetaKeys, number>;
-  data: T
-}
+  data: T;
+};

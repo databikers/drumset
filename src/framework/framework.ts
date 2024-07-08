@@ -2,8 +2,7 @@ import { FrameworkOptions } from '@options';
 import { Facts, FactsMeta } from '@parameters';
 import { FrameworkInterface } from './framework-interface';
 
-export class Framework<T, Nodes extends string> implements FrameworkInterface<T, Nodes>{
-
+export class Framework<T, Nodes extends string> implements FrameworkInterface<T, Nodes> {
   protected options: FrameworkOptions<T, Nodes>;
   constructor(frameworkOptions: FrameworkOptions<T, Nodes>) {
     this.options = frameworkOptions;
@@ -14,19 +13,12 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
       return this.exit(facts, new Error(`Node ${node} doesn't exist`));
     }
     if (facts) {
-      const { id, currentNode} = facts;
+      const { id, currentNode } = facts;
       if (!facts.inUse && !facts.used) {
         facts.inUse = true;
         if (facts.currentNode !== node) {
           const defaultMeta: FactsMeta = this.options.meta.get(node);
-          const {
-            expireAfter,
-            executeAfter,
-            timeoutBetweenRetries,
-            retries,
-            retriesLimit,
-            lastRetryTime
-          } = facts.meta
+          const { expireAfter, executeAfter, timeoutBetweenRetries, retries, retriesLimit, lastRetryTime } = facts.meta;
           facts.currentNode = node;
           facts.meta = {
             expireAfter: expireAfter || defaultMeta.expireAfter,
@@ -34,7 +26,7 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
             retries: retries || defaultMeta.retries,
             retriesLimit: retriesLimit || defaultMeta.retriesLimit,
             timeoutBetweenRetries: timeoutBetweenRetries || defaultMeta.timeoutBetweenRetries,
-            lastRetryTime: lastRetryTime || defaultMeta.lastRetryTime
+            lastRetryTime: lastRetryTime || defaultMeta.lastRetryTime,
           };
         }
         this.options.nodes.get(node).process(facts);
@@ -54,10 +46,10 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
   public retry(node: Nodes, facts: Facts<T, Nodes>, error?: Error) {
     const { retries, retriesLimit } = facts.meta;
     if (retries < retriesLimit) {
-      facts.meta.retries =  facts.meta.retries + 1;
-      this.next(node, facts)
+      facts.meta.retries = facts.meta.retries + 1;
+      this.next(node, facts);
     } else {
-      this.exit(facts, error || new Error(`Exceeded the limit of retries at "${node}" node`))
+      this.exit(facts, error || new Error(`Exceeded the limit of retries at "${node}" node`));
     }
   }
 }

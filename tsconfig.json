@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": [ "ES2022" ],
+    "lib": ["ES2022"],
     "module": "commonjs",
     "esModuleInterop": true,
     "target": "ES2022",
@@ -15,36 +15,16 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@const": [
-        "src/constants"
-      ],
-      "@framework": [
-        "src/framework"
-      ],
-      "@helper": [
-        "src/helpers"
-      ],
-      "@node": [
-        "src/node"
-      ],
-      "@logger": [
-        "src/logger"
-      ],
-      "@options": [
-        "src/options"
-      ],
-      "@parameters": [
-        "src/parameters"
-      ],
-      "@queue": [
-        "src/queue"
-      ],
-      "@saga": [
-        "src/saga"
-      ]
+      "@const": ["src/constants"],
+      "@framework": ["src/framework"],
+      "@helper": ["src/helpers"],
+      "@node": ["src/node"],
+      "@logger": ["src/logger"],
+      "@options": ["src/options"],
+      "@parameters": ["src/parameters"],
+      "@queue": ["src/queue"],
+      "@saga": ["src/saga"]
     }
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

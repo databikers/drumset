@@ -1,8 +1,7 @@
 import { Facts } from '@parameters';
 
 export class Queue<T, Nodes extends string> {
-
-  private data: Facts<T, Nodes>[]
+  private data: Facts<T, Nodes>[];
   constructor() {
     this.data = [];
   }
