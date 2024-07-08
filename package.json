@@ -6,8 +6,8 @@
     "framework",
     "saga",
     "workflows",
-    "complex",
-    "transactions"
+    "rule engine",
+    "complex transactions"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
