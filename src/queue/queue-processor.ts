@@ -24,9 +24,10 @@ export class QueueProcessor<T, Nodes extends string> {
           if (executeAfter && executeAfter > now) {
             return framework.next(currentNode, item);
           }
-          if (lastRetryTime && lastRetryTime - now < timeoutBetweenRetries) {
+          if (lastRetryTime && now - lastRetryTime < timeoutBetweenRetries) {
             return framework.next(currentNode, item);
           }
+          item.meta.lastRetryTime = new Date().getTime();
           try {
             await executor(
               item.data,
@@ -41,10 +42,10 @@ export class QueueProcessor<T, Nodes extends string> {
               },
             );
           } catch (error) {
-            meta.lastRetryTime = now;
+            item.meta.lastRetryTime = now;
             if (retries < retriesLimit) {
-              meta.retries = meta.retries + 1;
-              framework.next(currentNode, item);
+              item.meta.retries = meta.retries + 1;
+              return framework.retry(currentNode, item, error);
             }
             framework.exit(item, error);
           }

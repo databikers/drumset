@@ -1,6 +1,7 @@
 import { FrameworkOptions } from '@options';
 import { Facts, FactsMeta } from '@parameters';
 import { FrameworkInterface } from './framework-interface';
+import * as console from 'console';
 
 export class Framework<T, Nodes extends string> implements FrameworkInterface<T, Nodes> {
   protected options: FrameworkOptions<T, Nodes>;
@@ -26,8 +27,10 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
             retries: retries || defaultMeta.retries,
             retriesLimit: retriesLimit || defaultMeta.retriesLimit,
             timeoutBetweenRetries: timeoutBetweenRetries || defaultMeta.timeoutBetweenRetries,
-            lastRetryTime: lastRetryTime || defaultMeta.lastRetryTime,
+            lastRetryTime,
           };
+        } else {
+          facts.meta.lastRetryTime = facts.meta.lastRetryTime || new Date().getTime();
         }
         this.options.nodes.get(node).process(facts);
       } else if (facts.used && this.options.verbose) {
