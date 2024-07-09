@@ -1,2 +1,2 @@
 export { Saga } from '@saga';
-export { Executor } from '@parameters';
+export { Executor, FactsMeta } from '@parameters';
