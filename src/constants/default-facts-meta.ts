@@ -1,4 +1,3 @@
-import { FactsMetaKeys } from './facts-meta-keys';
 import { FactsMeta } from '@parameters';
 
 export const defaultFactsMeta: FactsMeta = {
@@ -8,4 +7,5 @@ export const defaultFactsMeta: FactsMeta = {
   expireAfter: 0,
   executeAfter: 0,
   timeoutBetweenRetries: 0,
+  compensatorNode: '',
 };
