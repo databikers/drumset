@@ -5,4 +5,5 @@ export type FactsMeta = {
   retriesLimit: number;
   timeoutBetweenRetries: number;
   lastRetryTime: number;
+  compensatorNode?: string;
 };
