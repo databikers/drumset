@@ -19,7 +19,7 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
         facts.inUse = true;
         if (facts.currentNode !== node) {
           const defaultMeta: FactsMeta = this.options.meta.get(node);
-          const { expireAfter, executeAfter, timeoutBetweenRetries, retries, retriesLimit, lastRetryTime } = facts.meta;
+          const { compensatorNode, expireAfter, executeAfter, timeoutBetweenRetries, retries, retriesLimit, lastRetryTime } = facts.meta;
           facts.currentNode = node;
           facts.meta = {
             expireAfter: expireAfter || defaultMeta.expireAfter,
@@ -27,6 +27,7 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
             retries: retries || defaultMeta.retries,
             retriesLimit: retriesLimit || defaultMeta.retriesLimit,
             timeoutBetweenRetries: timeoutBetweenRetries || defaultMeta.timeoutBetweenRetries,
+            compensatorNode: compensatorNode || defaultMeta.compensatorNode,
             lastRetryTime,
           };
         } else {
