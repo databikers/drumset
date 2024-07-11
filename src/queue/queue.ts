@@ -1,16 +1,16 @@
 import { Facts } from '@parameters';
 
-export class Queue<T, Nodes extends string> {
-  private data: Facts<T, Nodes>[];
+export class Queue<DataType, NodeName extends string> {
+  private data: Facts<DataType, NodeName>[];
   constructor() {
     this.data = [];
   }
 
-  enqueue(facts: Facts<T, Nodes>): number {
+  enqueue(facts: Facts<DataType, NodeName>): number {
     return this.data.push(facts);
   }
 
-  dequeue(): Facts<T, Nodes> {
+  dequeue(): Facts<DataType, NodeName> {
     return this.data.shift();
   }
 }

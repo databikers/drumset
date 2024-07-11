@@ -1,15 +1,14 @@
 import { FrameworkOptions } from '@options';
 import { Facts, FactsMeta } from '@parameters';
 import { FrameworkInterface } from './framework-interface';
-import * as console from 'console';
 
-export class Framework<T, Nodes extends string> implements FrameworkInterface<T, Nodes> {
-  protected options: FrameworkOptions<T, Nodes>;
-  constructor(frameworkOptions: FrameworkOptions<T, Nodes>) {
+export class Framework<DataType, NodeName extends string> implements FrameworkInterface<DataType, NodeName> {
+  protected options: FrameworkOptions<DataType, NodeName>;
+  constructor(frameworkOptions: FrameworkOptions<DataType, NodeName>) {
     this.options = frameworkOptions;
   }
 
-  public next(node: Nodes, facts: Facts<T, Nodes>) {
+  public next(node: NodeName, facts: Facts<DataType, NodeName>) {
     if (!this.options.nodes.has(node)) {
       return this.exit(facts, new Error(`Node ${node} doesn't exist`));
     }
@@ -19,7 +18,15 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
         facts.inUse = true;
         if (facts.currentNode !== node) {
           const defaultMeta: FactsMeta = this.options.meta.get(node);
-          const { compensatorNode, expireAfter, executeAfter, timeoutBetweenRetries, retries, retriesLimit, lastRetryTime } = facts.meta;
+          const {
+            compensatorNode,
+            expireAfter,
+            executeAfter,
+            timeoutBetweenRetries,
+            retries,
+            retriesLimit,
+            lastRetryTime,
+          } = facts.meta;
           facts.currentNode = node;
           facts.meta = {
             expireAfter: expireAfter || defaultMeta.expireAfter,
@@ -42,12 +49,12 @@ export class Framework<T, Nodes extends string> implements FrameworkInterface<T,
     }
   }
 
-  public exit(facts: Facts<T, Nodes>, error?: Error) {
+  public exit(facts: Facts<DataType, NodeName>, error?: Error) {
     facts.used = true;
     this.options.eventEmitter.emit(facts.id, error, facts.data);
   }
 
-  public retry(node: Nodes, facts: Facts<T, Nodes>, error?: Error) {
+  public retry(node: NodeName, facts: Facts<DataType, NodeName>, error?: Error) {
     const { retries, retriesLimit } = facts.meta;
     if (retries < retriesLimit) {
       facts.meta.retries = facts.meta.retries + 1;

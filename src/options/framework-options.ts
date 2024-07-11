@@ -1,12 +1,12 @@
 import { EventEmitter } from 'events';
-import { Node } from '@node';
 import { Logger } from '@logger';
 import { FactsMeta } from '@parameters';
+import { Processor } from '@node';
 
-export type FrameworkOptions<T, Nodes extends string> = {
-  nodes: Map<Nodes, Node<T, Nodes>>;
+export type FrameworkOptions<DataType, NodeName extends string> = {
   eventEmitter: EventEmitter;
-  verbose: boolean;
   logger: Logger;
-  meta: Map<Nodes, FactsMeta>;
+  meta: Map<NodeName, FactsMeta>;
+  nodes: Map<NodeName, Processor<DataType, NodeName>>;
+  verbose: boolean;
 };

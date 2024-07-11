@@ -1,6 +1,6 @@
 import { Queue } from '@queue';
 import { NodeOptions } from './node-options';
 
-export interface QueueProcessorOptions<T, Nodes extends string> extends NodeOptions<T, Nodes> {
-  queue: Queue<T, Nodes>;
+export interface QueueProcessorOptions<DataType, NodeName extends string> extends NodeOptions<DataType, NodeName> {
+  queue: Queue<DataType, NodeName>;
 }

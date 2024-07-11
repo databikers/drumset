@@ -1,18 +1,20 @@
 import { QueueProcessorOptions } from '@options';
-import { Facts, FactsMeta, PseudoIntervalParams } from '@parameters';
+import { Facts, PseudoIntervalParams } from '@parameters';
 import { pseudoInterval } from '@helper';
 import { Logger } from '@logger';
 
-export class QueueProcessor<T, Nodes extends string> {
+export class QueueProcessor<DataType, NodeName extends string> {
   public pseudoIntervalParams: PseudoIntervalParams;
   protected logger: Logger;
   protected verbose: boolean;
+  private readonly index: number;
 
-  constructor(queueProcessorOptions: QueueProcessorOptions<T, Nodes>) {
-    const { queue, executor, framework, verbose, logger } = queueProcessorOptions;
+  constructor(queueProcessorOptions: QueueProcessorOptions<DataType, NodeName>) {
+    const { queue, executor, framework, verbose, logger, index } = queueProcessorOptions;
+    this.index = index;
     this.pseudoIntervalParams = {
       executor: async () => {
-        const item: Facts<T, Nodes> = queue.dequeue();
+        const item: Facts<DataType, NodeName> = queue.dequeue();
         if (item) {
           item.inUse = false;
           const { currentNode, meta } = item;
@@ -31,7 +33,7 @@ export class QueueProcessor<T, Nodes extends string> {
           try {
             await executor(
               item.data,
-              (node: Nodes) => {
+              (node: NodeName) => {
                 framework.next(node, item);
               },
               (error?: Error) => {
@@ -48,7 +50,7 @@ export class QueueProcessor<T, Nodes extends string> {
               return framework.retry(currentNode, item, error);
             }
             if (item.meta.compensatorNode) {
-              framework.next(item.meta.compensatorNode as Nodes, item);
+              framework.next(item.meta.compensatorNode as NodeName, item);
             } else {
               framework.exit(item, error);
             }

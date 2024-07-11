@@ -1,14 +1,12 @@
 import { NodeOptions } from '@options';
-import { Facts } from '@parameters';
 import { Queue, QueueProcessor } from '@queue';
 
-export class Node<T, Nodes extends string> {
-  private readonly queue: Queue<T, Nodes>;
-  private readonly queueProcessor: QueueProcessor<T, Nodes>;
+export class Node<DataType, NodeName extends string> {
+  private readonly queue: Queue<DataType, NodeName>;
+  private readonly queueProcessor: QueueProcessor<DataType, NodeName>;
 
-  constructor(nodeOptions: NodeOptions<T, Nodes>) {
-    const { executor, framework, verbose, logger } = nodeOptions;
-    const queue: Queue<T, Nodes> = new Queue<T, Nodes>();
+  constructor(nodeOptions: NodeOptions<DataType, NodeName>) {
+    const { executor, framework, verbose, logger, queue, index } = nodeOptions;
     this.queue = queue;
     this.queueProcessor = new QueueProcessor({
       queue,
@@ -16,10 +14,7 @@ export class Node<T, Nodes extends string> {
       framework,
       verbose,
       logger,
+      index: index,
     });
-  }
-
-  process(facts: Facts<T, Nodes>): number {
-    return this.queue.enqueue(facts);
   }
 }
