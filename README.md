@@ -132,7 +132,7 @@ saga.addNode(
 
 saga.addNode(
   'finalizeOrder',
-  async function (facts, next, exit) {
+  async function (facts, next, exit, retry) {
     console.log(`finalizeOrder -> `);
     facts.txn_id = new Date().getTime().toString(16);
     facts.status = 'completed';
