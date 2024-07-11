@@ -2,11 +2,7 @@
 
 The `drumset` package provides a robust and user-friendly framework for managing complex workflows using the saga pattern.
 This pattern is particularly useful for handling distributed transactions by defining a sequence of steps (nodes)
-<<<<<<< HEAD
 and the logic for compensating (undoing) steps when failures occur. By defining saga's nodes and their relationships,
-=======
-and the logic for compensating (undoing) steps when failures occur. By defining saga's nodes and their relationships, 
->>>>>>> c71e8426cdd0eb17dcf4765c1a6b8be3933e6997
 you can ensure reliable and consistent transaction processing, even in the presence of failures.
 
 ```shell
@@ -172,3 +168,4 @@ saga
 4. **compensateStoreOrder**: Compensates for the order in case of failure by restoring the balance and setting the status to `declined`.
 
 5. **finalizeOrder**: Finalizes the order by generating a transaction ID and setting the status to `completed`.
+
