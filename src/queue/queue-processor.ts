@@ -2,15 +2,17 @@ import { QueueProcessorOptions } from '@options';
 import { Facts, PseudoIntervalParams } from '@parameters';
 import { pseudoInterval } from '@helper';
 import { Logger } from '@logger';
+import { RoundRobinProxy } from '@node';
 
 export class QueueProcessor<DataType, NodeName extends string> {
   public pseudoIntervalParams: PseudoIntervalParams;
   protected logger: Logger;
   protected verbose: boolean;
   private readonly index: number;
+  private rrProxy: RoundRobinProxy<DataType, NodeName>;
 
   constructor(queueProcessorOptions: QueueProcessorOptions<DataType, NodeName>) {
-    const { queue, executor, framework, verbose, logger, index } = queueProcessorOptions;
+    const { queue, executor, framework, verbose, logger, index, rrProxy } = queueProcessorOptions;
     this.index = index;
     this.pseudoIntervalParams = {
       executor: async () => {
@@ -54,6 +56,14 @@ export class QueueProcessor<DataType, NodeName extends string> {
             } else {
               framework.exit(item, error);
             }
+          } finally {
+            if (!rrProxy.rebalanced) {
+              rrProxy.upScale();
+            }
+          }
+        } else {
+          if (!rrProxy.downScaled) {
+            rrProxy.downScale();
           }
         }
       },
@@ -62,5 +72,10 @@ export class QueueProcessor<DataType, NodeName extends string> {
       interval: 0,
     };
     pseudoInterval(this.pseudoIntervalParams);
+  }
+
+  public stopProcessing() {
+    this.pseudoIntervalParams.isRan = false;
+    this.pseudoIntervalParams.doExit = true;
   }
 }

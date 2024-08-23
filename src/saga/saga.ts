@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 import { v4 } from 'uuid';
-import { SagaOptions } from '@options';
+import { SagaOptions, Scaling } from '@options';
 import { Executor, Facts, FactsMeta } from '@parameters';
-import { defaultFactsMeta, defaultSagaOptions, FactsMetaKeys } from '@const';
+import { defaultFactsMeta, defaultSagaOptions, defaultScaling, FactsMetaKeys } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { RoundRobinProxy, Processor } from '@node';
 import { validateAddNodeParams, validateFactsMeta, validateSagaOptions } from '@helper';
@@ -33,9 +33,9 @@ export class Saga<DataType, NodeName extends string> {
     node: NodeName,
     executor: Executor<DataType, NodeName>,
     factsMeta: Partial<FactsMeta> = defaultFactsMeta,
-    scalingFactor: number = 1,
+    scaling: Scaling = defaultScaling,
   ) {
-    validateAddNodeParams(node, executor, factsMeta, scalingFactor);
+    validateAddNodeParams(node, executor, factsMeta, scaling);
     this.nodes.set(
       node,
       new RoundRobinProxy<DataType, NodeName>({
@@ -43,7 +43,7 @@ export class Saga<DataType, NodeName extends string> {
         framework: this.framework,
         verbose: this.options.verbose,
         logger: this.options.logger,
-        scalingFactor: scalingFactor || 1,
+        scaling
       }),
     );
     this.meta.set(node, { ...defaultFactsMeta, ...factsMeta });

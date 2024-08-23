@@ -14,7 +14,14 @@ export class Node<DataType, NodeName extends string> {
       framework,
       verbose,
       logger,
+      rrProxy: nodeOptions.rrProxy,
       index: index,
     });
   }
+
+  public stopProcessing() {
+    return this.queueProcessor.stopProcessing();
+  }
+
+
 }

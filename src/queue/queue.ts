@@ -6,6 +6,10 @@ export class Queue<DataType, NodeName extends string> {
     this.data = [];
   }
 
+  get size() {
+    return this.data.length;
+  }
+
   enqueue(facts: Facts<DataType, NodeName>): number {
     return this.data.push(facts);
   }

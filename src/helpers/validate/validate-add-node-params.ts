@@ -15,6 +15,6 @@ export function validateAddNodeParams(...params: any[]): void {
   }
   const meta = getItemFromArrayByType(params, 'object');
   validateFactsMeta(meta);
-  const scalingFactor = getItemFromArrayByType(params, 'number');
-  validateScalingFactor(scalingFactor);
+  const scaling = getItemFromArrayByType(params, 'object', 1);
+  validateScalingFactor(scaling);
 }
