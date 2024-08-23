@@ -9,6 +9,7 @@ export class Node<DataType, NodeName extends string> {
     const { executor, framework, verbose, logger, queue, index } = nodeOptions;
     this.queue = queue;
     this.queueProcessor = new QueueProcessor({
+      name: nodeOptions.name,
       queue,
       executor,
       framework,

@@ -9,6 +9,7 @@ export interface Scaling {
 }
 
 export interface AddNodeOptions<DataType, NodeName extends string> {
+  name: NodeName;
   executor: Executor<DataType, NodeName>;
   framework: FrameworkInterface<DataType, NodeName>;
   verbose: boolean;

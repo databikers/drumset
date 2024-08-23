@@ -18,6 +18,14 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
     this.addNodes(addNodeOptions.scaling.minNodes);
   }
 
+  public get nSize() {
+    return this.nodes.length;
+  }
+
+  public get qSize() {
+    return this.queue.size;
+  }
+
   public get rebalanced() {
     return this.queue.size < this.addNodeOptions.scaling.queueSizeScalingThreshold;
   }
@@ -60,18 +68,24 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
     }
   }
 
-  public downScale() {
+  public scalingDown() {
     if (this.currentIndex < this.nodes.length - 1 && this.nodes.length > Math.floor(this.addNodeOptions.scaling.minNodes)) {
       const [ node] = this.nodes.splice(this.nodes.length - 1, 1);
       node.stopProcessing();
+      if (this.addNodeOptions.verbose) {
+        this.addNodeOptions.logger.log(`Scaled down node "${this.addNodeOptions.name}: (to ${this.nodes.length})`);
+      }
     }
   }
 
-  public upScale() {
+  public scalingUp() {
     if (this.nodes.length < this.addNodeOptions.scaling.maxNodes) {
       const { maxNodes } = this.addNodeOptions.scaling;
       const count = this.nodes.length + this.scalingFactor > maxNodes ? maxNodes - this.nodes.length : this.scalingFactor;
       this.addNodes(count);
+      if (this.addNodeOptions.verbose) {
+        this.addNodeOptions.logger.log(`Scaled up node "${this.addNodeOptions.name}: (to ${this.nodes.length})`);
+      }
     }
   }
 

@@ -3,22 +3,31 @@ import { Facts, PseudoIntervalParams } from '@parameters';
 import { pseudoInterval } from '@helper';
 import { Logger } from '@logger';
 import { RoundRobinProxy } from '@node';
+import { FactsStatus } from '@const';
 
 export class QueueProcessor<DataType, NodeName extends string> {
   public pseudoIntervalParams: PseudoIntervalParams;
   protected logger: Logger;
   protected verbose: boolean;
   private readonly index: number;
+  protected readonly name: NodeName;
   private rrProxy: RoundRobinProxy<DataType, NodeName>;
 
   constructor(queueProcessorOptions: QueueProcessorOptions<DataType, NodeName>) {
     const { queue, executor, framework, verbose, logger, index, rrProxy } = queueProcessorOptions;
     this.index = index;
+    this.name = queueProcessorOptions.name;
+    this.verbose = verbose;
+    this.logger = logger;
     this.pseudoIntervalParams = {
       executor: async () => {
         const item: Facts<DataType, NodeName> = queue.dequeue();
         if (item) {
           item.inUse = false;
+          if (item.status === FactsStatus.ENQUEUED) {
+            item.status = FactsStatus.PROCESSING;
+            item.stats[FactsStatus.PROCESSING] = new Date().getTime();
+          }
           const { currentNode, meta } = item;
           const { executeAfter, expireAfter, retries, retriesLimit, timeoutBetweenRetries, lastRetryTime } = meta;
           const now = new Date().getTime();
@@ -58,12 +67,12 @@ export class QueueProcessor<DataType, NodeName extends string> {
             }
           } finally {
             if (!rrProxy.rebalanced) {
-              rrProxy.upScale();
+              rrProxy.scalingUp();
             }
           }
         } else {
           if (!rrProxy.downScaled) {
-            rrProxy.downScale();
+            rrProxy.scalingDown();
           }
         }
       },
@@ -77,5 +86,8 @@ export class QueueProcessor<DataType, NodeName extends string> {
   public stopProcessing() {
     this.pseudoIntervalParams.isRan = false;
     this.pseudoIntervalParams.doExit = true;
+    if (this.verbose) {
+      this.logger.log(`Stopped node "${this.name}[${this.index}]`);
+    }
   }
 }

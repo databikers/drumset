@@ -1,6 +1,7 @@
 import { FrameworkOptions } from '@options';
 import { Facts, FactsMeta } from '@parameters';
 import { FrameworkInterface } from './framework-interface';
+import { FactsStatus } from '@const';
 
 export class Framework<DataType, NodeName extends string> implements FrameworkInterface<DataType, NodeName> {
   protected options: FrameworkOptions<DataType, NodeName>;
@@ -51,13 +52,16 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
 
   public exit(facts: Facts<DataType, NodeName>, error?: Error) {
     facts.used = true;
+    facts.status = FactsStatus.PROCESSED;
+    facts.stats[FactsStatus.PROCESSED] = new Date().getTime();
     this.options.eventEmitter.emit(facts.id, error, facts.data);
   }
 
   public retry(node: NodeName, facts: Facts<DataType, NodeName>, error?: Error) {
     const { retries, retriesLimit } = facts.meta;
     if (retries < retriesLimit) {
-      facts.meta.retries = facts.meta.retries + 1;
+      facts.meta.retries = (facts.meta.retries||0) + 1;
+      facts.stats.retries = facts.meta.retries;
       this.next(node, facts);
     } else {
       this.exit(facts, error || new Error(`Exceeded the limit of retries at "${node}" node`));
