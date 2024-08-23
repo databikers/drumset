@@ -39,7 +39,10 @@ Adds a node to the saga.
     - `retriesLimit` (number): The maximum number of retries for the node.
     - `timeoutBetweenRetries` (number): The time in milliseconds to wait between retries.
     - `compensatorNode` (string): The name of the node to call for compensation if this node fails.
-  - `scalingFactor` (number, optional): The count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
+  - `scaling` (object, optional): Additional processing options for the node:
+    - `minNodes`: The min count of concurrent nodes that use one queue. 
+    - `maxNodes`: The max count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
+    - `queueSizeScalingThreshold`: threshold of the queue size to run the horizontal scaling
 
 #### `process(startNode, facts)`
 
@@ -88,7 +91,11 @@ saga.addNode(
     next('processOrder');
   },
   { retriesLimit: 1 },
-  5,
+  {
+    minNodes: 1,
+    maxNodes: 5,
+    queueSizeScalingThreshold: 10
+  },
 );
 
 saga.addNode(
@@ -100,7 +107,11 @@ saga.addNode(
     next('storeOrder');
   },
   { retriesLimit: 1 },
-  3,
+  {
+    minNodes: 1,
+    maxNodes: 3,
+    queueSizeScalingThreshold: 5
+  },
 );
 
 saga.addNode(
@@ -115,7 +126,11 @@ saga.addNode(
     timeoutBetweenRetries: 1000,
     compensatorNode: 'compensateStoreOrder',
   },
-  3,
+  {
+    minNodes: 1,
+    maxNodes: 5,
+    queueSizeScalingThreshold: 10
+  },
 );
 
 saga.addNode(
@@ -127,7 +142,11 @@ saga.addNode(
     exit(new Error('Transaction declined'));
   },
   { retriesLimit: 1 },
-  3,
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5
+  },
 );
 
 saga.addNode(
@@ -139,7 +158,11 @@ saga.addNode(
     exit();
   },
   { retriesLimit: 1 },
-  3,
+  {
+    minNodes: 1,
+    maxNodes: 3,
+    queueSizeScalingThreshold: 5
+  },
 );
 
 const facts = {
