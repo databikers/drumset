@@ -11,5 +11,7 @@ straightforward as possible.
 
 ### Added
 -  Dynamic horizontal scaling for Nodes in Graph (Saga) instead of static scaling
+-  Verbose mode made working, added logs
+-  Added saga.state() method to display the saga current state/loads
 ### Changed
 - saga.addNode 4-th argument changed form number to object implements Scaling interface
