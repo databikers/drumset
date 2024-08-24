@@ -38,6 +38,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
             compensatorNode: compensatorNode || defaultMeta.compensatorNode,
             lastRetryTime,
           };
+          facts.meta = { ...facts.meta, ...this.options.meta.get(node) };
         } else {
           facts.meta.lastRetryTime = facts.meta.lastRetryTime || new Date().getTime();
         }
