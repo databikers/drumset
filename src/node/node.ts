@@ -23,6 +23,4 @@ export class Node<DataType, NodeName extends string> {
   public stopProcessing() {
     return this.queueProcessor.stopProcessing();
   }
-
-
 }

@@ -35,7 +35,7 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
   }
 
   public get scalingFactor() {
-    return Math.floor(this.queue.size/Math.floor(this.addNodeOptions.scaling.queueSizeScalingThreshold));
+    return Math.floor(this.queue.size / Math.floor(this.addNodeOptions.scaling.queueSizeScalingThreshold));
   }
 
   public get node() {
@@ -45,16 +45,13 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
   }
 
   private addNodes(count: number) {
-    const {
-      scaling,
-      ...nodeOptions
-    } = this.addNodeOptions;
+    const { scaling, ...nodeOptions } = this.addNodeOptions;
     const nodesCount: number = this.nodes.length;
     let calculatedThreshold: number = count + this.nodes.length;
     if (calculatedThreshold < Math.floor(scaling.minNodes)) {
       calculatedThreshold = Math.floor(scaling.minNodes);
     } else if (calculatedThreshold > Math.floor(scaling.maxNodes)) {
-      calculatedThreshold = Math.floor(scaling.maxNodes)
+      calculatedThreshold = Math.floor(scaling.maxNodes);
     }
     for (let i = nodesCount; i < calculatedThreshold; i = i + 1) {
       this.nodes.push(
@@ -62,15 +59,18 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
           queue: this.queue,
           index: this.nodes.length,
           rrProxy: this,
-          ...nodeOptions
+          ...nodeOptions,
         }),
       );
     }
   }
 
   public scalingDown() {
-    if (this.currentIndex < this.nodes.length - 1 && this.nodes.length > Math.floor(this.addNodeOptions.scaling.minNodes)) {
-      const [ node] = this.nodes.splice(this.nodes.length - 1, 1);
+    if (
+      this.currentIndex < this.nodes.length - 1 &&
+      this.nodes.length > Math.floor(this.addNodeOptions.scaling.minNodes)
+    ) {
+      const [node] = this.nodes.splice(this.nodes.length - 1, 1);
       node.stopProcessing();
       if (this.addNodeOptions.verbose) {
         this.addNodeOptions.logger.log(`Scaled down node "${this.addNodeOptions.name}: (to ${this.nodes.length})`);
@@ -81,7 +81,8 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
   public scalingUp() {
     if (this.nodes.length < this.addNodeOptions.scaling.maxNodes) {
       const { maxNodes } = this.addNodeOptions.scaling;
-      const count = this.nodes.length + this.scalingFactor > maxNodes ? maxNodes - this.nodes.length : this.scalingFactor;
+      const count =
+        this.nodes.length + this.scalingFactor > maxNodes ? maxNodes - this.nodes.length : this.scalingFactor;
       this.addNodes(count);
       if (this.addNodeOptions.verbose) {
         this.addNodeOptions.logger.log(`Scaled up node "${this.addNodeOptions.name}: (to ${this.nodes.length})`);

@@ -61,7 +61,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
   public retry(node: NodeName, facts: Facts<DataType, NodeName>, error?: Error) {
     const { retries, retriesLimit } = facts.meta;
     if (retries < retriesLimit) {
-      facts.meta.retries = (facts.meta.retries||0) + 1;
+      facts.meta.retries = (facts.meta.retries || 0) + 1;
       facts.stats.retries = facts.meta.retries;
       this.next(node, facts);
     } else {

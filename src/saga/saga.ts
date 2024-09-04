@@ -44,7 +44,7 @@ export class Saga<DataType, NodeName extends string> {
         framework: this.framework,
         verbose: this.options.verbose,
         logger: this.options.logger,
-        scaling
+        scaling,
       }),
     );
     this.meta.set(node, { ...defaultFactsMeta, ...factsMeta });
@@ -68,11 +68,11 @@ export class Saga<DataType, NodeName extends string> {
       meta: (factsMeta as FactsMeta) || this.meta.get(startNode),
       stats: {
         retries: 0,
-        [FactsStatus.ENQUEUED]: new Date().getTime()
+        [FactsStatus.ENQUEUED]: new Date().getTime(),
       },
       status: FactsStatus.ENQUEUED,
       inUse: false,
-      used: false
+      used: false,
     };
     return new Promise((resolve, reject) => {
       this.eventEmitter.on(facts.id, (error, facts) => {
@@ -88,7 +88,9 @@ export class Saga<DataType, NodeName extends string> {
 
   public state() {
     this.nodes.forEach((roundRobinProxy: RoundRobinProxy<DataType, NodeName>, nodeName: NodeName) => {
-      this.options.logger.log(`Node "${nodeName}" has ${roundRobinProxy.nSize} replicas and ${roundRobinProxy.qSize} queue size`);
-    })
+      this.options.logger.log(
+        `Node "${nodeName}" has ${roundRobinProxy.nSize} replicas and ${roundRobinProxy.qSize} queue size`,
+      );
+    });
   }
 }

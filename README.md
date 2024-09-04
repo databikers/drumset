@@ -40,7 +40,7 @@ Adds a node to the saga.
     - `timeoutBetweenRetries` (number): The time in milliseconds to wait between retries.
     - `compensatorNode` (string): The name of the node to call for compensation if this node fails.
   - `scaling` (object, optional): Additional processing options for the node:
-    - `minNodes`: The min count of concurrent nodes that use one queue. 
+    - `minNodes`: The min count of concurrent nodes that use one queue.
     - `maxNodes`: The max count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
     - `queueSizeScalingThreshold`: threshold of the queue size to run the horizontal scaling
 
@@ -94,7 +94,7 @@ saga.addNode(
   {
     minNodes: 1,
     maxNodes: 5,
-    queueSizeScalingThreshold: 10
+    queueSizeScalingThreshold: 10,
   },
 );
 
@@ -110,7 +110,7 @@ saga.addNode(
   {
     minNodes: 1,
     maxNodes: 3,
-    queueSizeScalingThreshold: 5
+    queueSizeScalingThreshold: 5,
   },
 );
 
@@ -129,7 +129,7 @@ saga.addNode(
   {
     minNodes: 1,
     maxNodes: 5,
-    queueSizeScalingThreshold: 10
+    queueSizeScalingThreshold: 10,
   },
 );
 
@@ -145,7 +145,7 @@ saga.addNode(
   {
     minNodes: 1,
     maxNodes: 2,
-    queueSizeScalingThreshold: 5
+    queueSizeScalingThreshold: 5,
   },
 );
 
@@ -161,7 +161,7 @@ saga.addNode(
   {
     minNodes: 1,
     maxNodes: 3,
-    queueSizeScalingThreshold: 5
+    queueSizeScalingThreshold: 5,
   },
 );
 
@@ -191,4 +191,3 @@ saga
 4. **compensateStoreOrder**: Compensates for the order in case of failure by restoring the balance and setting the status to `declined`.
 
 5. **finalizeOrder**: Finalizes the order by generating a transaction ID and setting the status to `completed`.
-
