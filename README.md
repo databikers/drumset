@@ -44,6 +44,15 @@ Adds a node to the saga.
     - `maxNodes`: The max count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
     - `queueSizeScalingThreshold`: threshold of the queue size to run the horizontal scaling
 
+#### `addMiddleware(names, handlers)`
+- **Parameters:**
+  - `names` (string): An array of names of the nodes to which middlewares should be applied.
+  - `handlera` (function): An array of the asynchronous functions, each function receives the following arguments:
+    - `facts` (object): The current state of the saga.
+    - `next` (function): A function to call the next node.
+    - `exit` (function): A function to complete the saga or terminate it with an error.
+
+
 #### `process(startNode, facts)`
 
 Starts the saga from the specified node.
@@ -178,6 +187,24 @@ saga
     console.log({ result });
   })
   .catch(console.error);
+```
+
+### Middlewares 
+```typescript
+saga.addMiddleware(
+  [
+    'storeOrder'
+  ],
+  [
+    (facts, next, exit) => {
+      if (facts.someThing) {
+        next('restoreOrder');
+      }
+    }
+  ]
+)
+
+
 ```
 
 ### Node Definitions
