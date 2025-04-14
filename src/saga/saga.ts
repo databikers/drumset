@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { v4 } from 'uuid';
 import { SagaOptions, Scaling } from '@options';
-import { Executor, Facts, FactsMeta } from '@parameters';
+import { Executor, Facts, FactsMeta, Middleware } from '@parameters';
 import { defaultFactsMeta, defaultSagaOptions, defaultScaling, FactsStatus } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Processor, RoundRobinProxy } from '@node';
@@ -11,6 +11,7 @@ export class Saga<DataType, NodeName extends string> {
   protected options: SagaOptions;
   protected eventEmitter: EventEmitter;
   protected nodes: Map<NodeName, Processor<DataType, NodeName>>;
+  protected middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
   protected meta: Map<NodeName, FactsMeta>;
   protected framework: FrameworkInterface<DataType, NodeName>;
 
@@ -19,6 +20,7 @@ export class Saga<DataType, NodeName extends string> {
     this.options = sagaOptions ? { ...defaultSagaOptions, ...sagaOptions } : defaultSagaOptions;
     this.eventEmitter = new EventEmitter();
     this.nodes = new Map<NodeName, Processor<DataType, NodeName>>();
+    this.middleware = new Map<NodeName, Middleware<DataType, NodeName>[]>();
     this.meta = new Map<NodeName, any>();
     this.framework = new Framework({
       nodes: this.nodes,
@@ -27,6 +29,12 @@ export class Saga<DataType, NodeName extends string> {
       logger: this.options.logger,
       meta: this.meta,
     });
+  }
+
+  addMiddleware(nodes: NodeName[], middlewares: Middleware<DataType, NodeName>[]) {
+    for (const node of nodes) {
+      this.middleware.set(node, middlewares);
+    }
   }
 
   addNode(
@@ -42,6 +50,7 @@ export class Saga<DataType, NodeName extends string> {
         name: node,
         executor,
         framework: this.framework,
+        middleware: this.middleware,
         verbose: this.options.verbose,
         logger: this.options.logger,
         scaling,

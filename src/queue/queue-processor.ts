@@ -1,5 +1,5 @@
 import { QueueProcessorOptions } from '@options';
-import { Facts, PseudoIntervalParams } from '@parameters';
+import { Executor, Facts, Middleware, PseudoIntervalParams } from '@parameters';
 import { pseudoInterval } from '@helper';
 import { Logger } from '@logger';
 import { RoundRobinProxy } from '@node';
@@ -12,13 +12,15 @@ export class QueueProcessor<DataType, NodeName extends string> {
   private readonly index: number;
   protected readonly name: NodeName;
   private rrProxy: RoundRobinProxy<DataType, NodeName>;
+  protected middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
 
   constructor(queueProcessorOptions: QueueProcessorOptions<DataType, NodeName>) {
-    const { queue, executor, framework, verbose, logger, index, rrProxy } = queueProcessorOptions;
+    const { queue, executor, framework, verbose, logger, index, rrProxy, middleware } = queueProcessorOptions;
     this.index = index;
     this.name = queueProcessorOptions.name;
     this.verbose = verbose;
     this.logger = logger;
+    this.middleware = middleware;
     this.pseudoIntervalParams = {
       executor: async () => {
         const item: Facts<DataType, NodeName> = queue.dequeue();
@@ -42,6 +44,18 @@ export class QueueProcessor<DataType, NodeName extends string> {
           }
           item.meta.lastRetryTime = new Date().getTime();
           try {
+            const middlewares = this.middleware.get(this.name) || [];
+            for (const m of middlewares) {
+              await m(
+                item.data,
+                (node: NodeName) => {
+                  framework.next(node, item);
+                },
+                (error?: Error) => {
+                  framework.exit(item, error);
+                }
+              );
+            }
             await executor(
               item.data,
               (node: NodeName) => {
