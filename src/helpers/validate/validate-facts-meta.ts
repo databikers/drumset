@@ -1,7 +1,7 @@
-import { FactsMeta } from '@parameters';
+import { FactsMetaContract, NodeMeta } from '@parameters';
 import { factsMetaKeys } from '@const';
 
-export function validateFactsMeta(factsMeta: FactsMeta, isRequired: boolean = false): void {
+export function validateFactsMeta(factsMeta: FactsMetaContract<any> | NodeMeta, isRequired: boolean = false): void {
   if (typeof factsMeta === 'undefined' && !isRequired) {
     return;
   }
