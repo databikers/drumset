@@ -1,6 +1,6 @@
 {
   "name": "drumset",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "description": "This is a library specifically designed for implementing sagas in Node.js applications",
   "keywords": [
     "framework",
