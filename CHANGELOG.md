@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [3.0.0] - 2025-04-21 (Breaking changes!) 
+## [3.0.1] - 2025-04-23 (Breaking changes!)
+
+- Added ReturnType for **saga.process** method 
+- **Changed response of the saga.process method from the Promise<Facts<DataType, NodeName> to the Promise<DataType>** 
+
+---
+
+## [3.0.0] - 2025-04-21 (Breaking changes!)
 
 - Added the ability to run in parallel on multiple nodes (&beta;)
 - Replaced **compensatorNode** with **rollbackWhenErrorNode** in NodeMeta and FactsMeta contracts
