@@ -5,22 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.0.2] - 2025-04-23
+
+### Fixed
+
+- Fixed README.md: wrong argument definition scalingFactor (line 27)
+
+
 ## [3.0.1] - 2025-04-23 (Breaking changes!)
 
+### Added
+
 - Added ReturnType for **saga.process** method 
+
+### Fixed
+
 - **Changed response of the saga.process method from the Promise<Facts<DataType, NodeName> to the Promise<DataType>** 
 
 ---
 
 ## [3.0.0] - 2025-04-21 (Breaking changes!)
 
+### Added
+
 - Added the ability to run in parallel on multiple nodes (&beta;)
-- Replaced **compensatorNode** with **rollbackWhenErrorNode** in NodeMeta and FactsMeta contracts
 - Added **rollbackWhenSuccessNode** to NodeMeta and FactsMeta contracts
 - Added **runAfterNodesSucceed** property to NodeMeta and FactsMeta contracts
 - Added optional **factsMeta** argument for the **saga.process** method
 - Added **expiresAfter** property to the optional factsMeta argument for the **saga.process** method
 - Added **executeAfter** property to the optional factsMeta argument for the **saga.process** method
+- Replaced **compensatorNode** with **rollbackWhenErrorNode** in NodeMeta and FactsMeta contracts
 
 ---
 
