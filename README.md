@@ -394,4 +394,6 @@ Here we have the next nodes:
 
 ![graph](static/graph.png)
 
-#### [Take a look at the sandbox](sandbox/example.js)
+#### [Sandbox](sandbox/example.js)
+
+#### [Changelog](./CHANGELOG.md)
