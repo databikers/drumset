@@ -1,8 +1,7 @@
 import { QueueProcessorOptions } from '@options';
-import { Executor, Facts, Middleware, PseudoIntervalParams } from '@parameters';
+import { Facts, Middleware, PseudoIntervalParams } from '@parameters';
 import { pseudoInterval } from '@helper';
 import { Logger } from '@logger';
-import { RoundRobinProxy } from '@node';
 import { FactsStatus } from '@const';
 
 export class QueueProcessor<DataType, NodeName extends string> {
@@ -11,7 +10,6 @@ export class QueueProcessor<DataType, NodeName extends string> {
   protected verbose: boolean;
   private readonly index: number;
   protected readonly name: NodeName;
-  private rrProxy: RoundRobinProxy<DataType, NodeName>;
   protected middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
 
   constructor(queueProcessorOptions: QueueProcessorOptions<DataType, NodeName>) {
@@ -25,57 +23,86 @@ export class QueueProcessor<DataType, NodeName extends string> {
       executor: async () => {
         const item: Facts<DataType, NodeName> = queue.dequeue();
         if (item) {
-          item.inUse = false;
           if (item.status === FactsStatus.ENQUEUED) {
             item.status = FactsStatus.PROCESSING;
             item.stats[FactsStatus.PROCESSING] = new Date().getTime();
           }
-          const { currentNode, meta } = item;
+          const meta = item.meta.get(this.name);
           const { executeAfter, expireAfter, retries, retriesLimit, timeoutBetweenRetries, lastRetryTime } = meta;
           const now = new Date().getTime();
           if (expireAfter && expireAfter < now) {
             framework.exit(item, new Error(`Facts ${item.id} was expired`));
           }
           if (executeAfter && executeAfter > now) {
-            return framework.next(currentNode, item);
+            return framework.next(this.name, item);
           }
-          if (meta.retriesLimit && meta.retries && now - lastRetryTime < timeoutBetweenRetries) {
-            return framework.next(currentNode, item);
+          if (meta.retrying) {
+            if (meta.retrying && meta.retriesLimit > meta.retries && now - lastRetryTime < timeoutBetweenRetries) {
+              return framework.next(this.name, item);
+            }
           }
-          item.meta.lastRetryTime = new Date().getTime();
+
+          meta.lastRetryTime = new Date().getTime();
           try {
             const middlewares = this.middleware.get(this.name) || [];
             for (const m of middlewares) {
               await m(
                 item.data,
                 (node: NodeName) => {
+                  item.inUse.delete(this.name);
+                  item.processedNodes.add(this.name);
+                  item.meta.delete(this.name);
                   framework.next(node, item);
                 },
                 (error?: Error) => {
+                  item.meta.delete(this.name);
+                  item.failedNodes.add(this.name);
                   framework.exit(item, error);
-                }
+                },
               );
             }
+            item.enqueuedNodes.add(this.name);
             await executor(
               item.data,
               (node: NodeName) => {
+                item.inUse.delete(this.name);
+                item.processedNodes.add(this.name);
+                if (meta.rollbackWhenSuccessNode) {
+                  item.rollbacks.add(meta.rollbackWhenSuccessNode);
+                }
                 framework.next(node, item);
               },
               (error?: Error) => {
+                if (meta.rollbackWhenErrorNode) {
+                  item.activeCompensator.add(meta.rollbackWhenErrorNode);
+                }
                 framework.exit(item, error);
               },
               (error?: Error) => {
-                framework.retry(currentNode, item, error);
+                framework.retry(this.name, item, error);
               },
             );
-          } catch (error) {
-            item.meta.lastRetryTime = now;
-            if (retries < retriesLimit) {
-              item.meta.retries = meta.retries + 1;
-              return framework.retry(currentNode, item, error);
+            if (item.rollbacks.has(this.name)) {
+              item.processedNodes.add(this.name);
             }
-            if (item.meta.compensatorNode) {
-              framework.next(item.meta.compensatorNode as NodeName, item);
+          } catch (error) {
+            const meta = item.meta.get(this.name);
+            item.nodeErrors.set(this.name, error);
+            meta.lastRetryTime = now;
+            if (meta.retries < meta.retriesLimit) {
+              meta.retries = meta.retries || 0;
+              meta.retries += 1;
+              item.stats.retries.set(this.name, meta.retries);
+              return framework.retry(this.name, item, error);
+            }
+            item.failedNodes.add(this.name);
+            item.meta.delete(this.name);
+            if (meta.rollbackWhenErrorNode) {
+              item.activeCompensator.add(meta.rollbackWhenErrorNode);
+              if (meta.rollbackWhenSuccessNode) {
+                item.rollbacks.delete(meta.rollbackWhenSuccessNode);
+              }
+              framework.next(meta.rollbackWhenErrorNode, item);
             } else {
               framework.exit(item, error);
             }
@@ -101,7 +128,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
     this.pseudoIntervalParams.isRan = false;
     this.pseudoIntervalParams.doExit = true;
     if (this.verbose) {
-      this.logger.log(`Stopped node "${this.name}[${this.index}]`);
+      this.logger.log(`Stopped node '${this.name}[${this.index}]'`);
     }
   }
 }

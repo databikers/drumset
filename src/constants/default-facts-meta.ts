@@ -1,11 +1,13 @@
-import { FactsMeta } from '@parameters';
+import { FactsMetaContract } from '@parameters';
 
-export const defaultFactsMeta: FactsMeta = {
-  retriesLimit: 0,
-  retries: 0,
+export const defaultFactsMeta: FactsMetaContract<any> = {
+  node: '',
+  rollbackWhenErrorNode: undefined,
+  rollbackWhenSuccessNode: undefined,
   lastRetryTime: 0,
-  expireAfter: 0,
-  executeAfter: 0,
+  retriesLimit: 1,
+  retries: 0,
   timeoutBetweenRetries: 0,
-  compensatorNode: '',
+  retrying: false,
+  runAfterNodesSucceed: [],
 };

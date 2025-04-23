@@ -1,78 +1,4 @@
-# Drumset
-
-The `drumset` package provides a robust and user-friendly framework for managing complex workflows using the saga pattern.
-This pattern is particularly useful for handling distributed transactions by defining a sequence of steps (nodes)
-and the logic for compensating (undoing) steps when failures occur. By defining saga's nodes and their relationships,
-you can ensure reliable and consistent transaction processing, even in the presence of failures.
-
-```shell
-
-npm i -s drumset
-
-```
-
-Creates a new instance of the `Saga` class.
-
-```javascript
-import { Saga } from 'drumset';
-
-const saga = new Saga({
-  verbose: true,
-  logger: console,
-});
-```
-
-### Saga instance methods:
-
-#### `addNode(name, handler, meta, scalingFactor = 1)`
-
-Adds a node to the saga.
-
-- **Parameters:**
-  - `name` (string): The name of the node.
-  - `handler` (function): An asynchronous function that performs the node's operation. The function receives the following arguments:
-    - `facts` (object): The current state of the saga.
-    - `next` (function): A function to call the next node.
-    - `exit` (function): A function to complete the saga or terminate it with an error.
-    - `retry` (function): A function to retry processing of the facts on the current node.
-  - `meta` (object, optional): Additional processing options for the node.
-    - `retriesLimit` (number): The maximum number of retries for the node.
-    - `timeoutBetweenRetries` (number): The time in milliseconds to wait between retries.
-    - `rollbackWhenErrorNode` (string): The name of the node to call for compensation if this node fails.
-    - `rollbackWhenSuccessNode` (string): The name of the node to call for rollback if this node succeeded but something went wrong in the execution chain after.
-    - `runAfterNodesSucceed` (string[]): An array of node names that must succeed before this node will start.
-  - `scaling` (object, optional): Additional processing options for the node:
-    - `minNodes`: The min count of concurrent nodes that use one queue.
-    - `maxNodes`: The max count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
-    - `queueSizeScalingThreshold`: threshold of the queue size to run the horizontal scaling
-
-#### `addMiddleware(names, handlers)`
-
-- **Parameters:**
-  - `names` (string): An array of names of the nodes to which middlewares should be applied.
-  - `handler` (function): An array of the asynchronous functions, each function receives the following arguments:
-    - `facts` (object): The current state of the saga.
-    - `next` (function): A function to call the next node.
-    - `exit` (function): A function to complete the saga or terminate it with an error.
-
-#### `process(startNode, facts, factsMeta)`
-
-Starts the saga from the specified node.
-
-- **Parameters:**
-  - `startNode` (string): The name of the node to start the saga.
-  - `facts` (object): The initial state of the saga.
-  - `factsMeta` (object): Initial meta specific for current facts
-    - `executeAfter` (number): The timestamp in milliseconds after which fact processing should start.
-    - `expireAfter` (number): The timestamp in milliseconds when facts should be expired and execution chain should be stopped.
-    - `retriesLimit` (number): The maximum number of retries for the facts.
-- **Returns:**
-  - `Promise`: Resolves with the final state of the saga or rejects with an error.
-
-### Example Usage:
-
-```javascript
-const { Saga } = require('drumset');
+const { Saga } = require('../dist');
 
 const calls = [];
 
@@ -338,8 +264,18 @@ saga.addNode(
   },
 );
 
+saga.addMiddleware(
+  [
+    'A',
+  ],
+  [
+    async (facts) => {
+      console.log(`Middleware executed`);
+    },
+  ],
+);
+
 setTimeout(() => {
-  // Take a look behind the scenes to check all running nodes
   console.log(calls);
 }, 10000);
 
@@ -348,48 +284,7 @@ saga
   .then((result) => {
     console.log({ result });
   })
-  .catch((error) => console.log({ error }))
+  .catch((er) => console.log({ er }))
   .finally(() => {
-    // Take a look what nodes were running when you receive reply
     console.log(calls);
   });
-```
-
-### Middlewares
-
-```typescript
-saga.addMiddleware(
-  [
-    'A',
-    'D'
-  ],
-  [
-    async (facts) => {
-      console.log(`Middleware executed`);
-    },
-  ],
-);
-```
-
-### Node Definitions
-Here we have the next nodes:
-- A: our saga`s entry point
-- RollbackA: rollbacks succeeded A if something went wrong in the execution chain after that
-- CompensateA: rollbacks failed A and goes to the Error node
-- B: is executing simultaneously with node C
-- C: is executing simultaneously with node B
-- RollbackB: the same as RollbackA but for the node B
-- CompensateB: the same as CompensateA but for the node B
-- RollbackC: ...
-- CompensateC: ...
-- D: run if B and C nodes both succeeded 
-- RollbackD: ...
-- CompensateD: ...
-- Error: prepare and returns error response
-- Success: prepare and returns success response
-
-### Our saga`s graph
-![graph](static/graph.png)
-
-#### [Take a look at the sandbox](sandbox/example.js)
-

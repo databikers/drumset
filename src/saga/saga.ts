@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 import { v4 } from 'uuid';
 import { SagaOptions, Scaling } from '@options';
-import { Executor, Facts, FactsMeta, Middleware } from '@parameters';
-import { defaultFactsMeta, defaultSagaOptions, defaultScaling, FactsStatus } from '@const';
+import { Executor, Facts, FactsMetaContract, Middleware, NodeMeta } from '@parameters';
+import { defaultSagaOptions, defaultScaling, FactsStatus } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Processor, RoundRobinProxy } from '@node';
 import { validateAddNodeParams, validateFactsMeta, validateSagaOptions } from '@helper';
@@ -11,8 +11,9 @@ export class Saga<DataType, NodeName extends string> {
   protected options: SagaOptions;
   protected eventEmitter: EventEmitter;
   protected nodes: Map<NodeName, Processor<DataType, NodeName>>;
+  protected facts: Map<string, Facts<DataType, NodeName>>;
   protected middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
-  protected meta: Map<NodeName, FactsMeta>;
+  protected meta: Map<NodeName, NodeMeta>;
   protected framework: FrameworkInterface<DataType, NodeName>;
 
   constructor(sagaOptions?: SagaOptions) {
@@ -20,6 +21,7 @@ export class Saga<DataType, NodeName extends string> {
     this.options = sagaOptions ? { ...defaultSagaOptions, ...sagaOptions } : defaultSagaOptions;
     this.eventEmitter = new EventEmitter();
     this.nodes = new Map<NodeName, Processor<DataType, NodeName>>();
+    this.facts = new Map<string, Facts<DataType, NodeName>>();
     this.middleware = new Map<NodeName, Middleware<DataType, NodeName>[]>();
     this.meta = new Map<NodeName, any>();
     this.framework = new Framework({
@@ -31,19 +33,19 @@ export class Saga<DataType, NodeName extends string> {
     });
   }
 
-  addMiddleware(nodes: NodeName[], middlewares: Middleware<DataType, NodeName>[]) {
+  public addMiddleware(nodes: NodeName[], middlewares: Middleware<DataType, NodeName>[]) {
     for (const node of nodes) {
       this.middleware.set(node, middlewares);
     }
   }
 
-  addNode(
+  public addNode(
     node: NodeName,
     executor: Executor<DataType, NodeName>,
-    factsMeta: Partial<FactsMeta> = defaultFactsMeta,
+    nodeMeta: Partial<NodeMeta> = {},
     scaling: Scaling = defaultScaling,
   ) {
-    validateAddNodeParams(node, executor, factsMeta, scaling);
+    validateAddNodeParams(node, executor, nodeMeta, scaling);
     this.nodes.set(
       node,
       new RoundRobinProxy<DataType, NodeName>({
@@ -56,39 +58,56 @@ export class Saga<DataType, NodeName extends string> {
         scaling,
       }),
     );
-    this.meta.set(node, { ...defaultFactsMeta, ...factsMeta });
+    this.meta.set(node, nodeMeta as NodeMeta);
     if (this.options.verbose) {
       this.options.logger.log(`Added node ${node} (${scaling.minNodes} - ${scaling.maxNodes})`);
     }
   }
 
-  process(startNode: NodeName, data: DataType, factsMeta?: Partial<FactsMeta>) {
+  public process(startNode: NodeName, data: DataType, factsMeta?: Pick<FactsMetaContract<NodeName>, 'expireAfter' | 'executeAfter' | 'retriesLimit'>) {
     if (!startNode || !this.nodes.has(startNode)) {
       throw new Error(`Node ${startNode} doesn't exist`);
     }
     if (!data) {
       throw new Error(`The "data" can't be nullable`);
     }
-    validateFactsMeta(factsMeta as FactsMeta);
+    validateFactsMeta(factsMeta as FactsMetaContract<NodeName>);
     const facts: Facts<DataType, NodeName> = {
       id: v4(),
-      currentNode: startNode,
+      processedNodes: new Set<NodeName>(),
+      enqueuedNodes: new Set<NodeName>(),
+      failedNodes: new Set<NodeName>(),
+      nodeErrors: new Map<NodeName, Error>(),
       data,
-      meta: (factsMeta as FactsMeta) || this.meta.get(startNode),
+      meta: new Map<NodeName, FactsMetaContract<NodeName>>(),
       stats: {
-        retries: 0,
+        retries: new Map<NodeName, number>(),
         [FactsStatus.ENQUEUED]: new Date().getTime(),
       },
       status: FactsStatus.ENQUEUED,
-      inUse: false,
+      inUse: new Set(),
+      activeCompensator: new Set(),
+      rollbacks: new Set(),
       used: false,
     };
+    const nodeMeta = this.meta.get(startNode);
+    const { expireAfter, executeAfter, retriesLimit } = Object.assign({}, factsMeta);
+    const meta = {
+      ...nodeMeta,
+      expireAfter,
+      executeAfter,
+      retriesLimit: retriesLimit || nodeMeta.retriesLimit,
+    }
+    facts.meta.set(startNode, meta as FactsMetaContract<NodeName>);
+    facts.meta.get(startNode).node = startNode;
+    this.facts.set(facts.id, facts);
     return new Promise((resolve, reject) => {
       this.eventEmitter.on(facts.id, (error, facts) => {
         this.eventEmitter.removeAllListeners(facts.id);
         if (this.options.verbose) {
           this.options.logger.log(facts.stats);
         }
+        this.facts.delete(facts.id);
         return error ? reject(error) : resolve(facts);
       });
       this.framework.next(startNode, facts);
@@ -98,7 +117,7 @@ export class Saga<DataType, NodeName extends string> {
   public state() {
     this.nodes.forEach((roundRobinProxy: RoundRobinProxy<DataType, NodeName>, nodeName: NodeName) => {
       this.options.logger.log(
-        `Node "${nodeName}" has ${roundRobinProxy.nSize} replicas and ${roundRobinProxy.qSize} queue size`,
+        `Node "${nodeName}" has ${roundRobinProxy.nSize} replica${roundRobinProxy.nSize > 1 ? 's' : ''} and ${roundRobinProxy.qSize} queue size`,
       );
     });
   }
