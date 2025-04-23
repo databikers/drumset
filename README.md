@@ -24,7 +24,7 @@ const saga = new Saga({
 
 ### Saga instance methods:
 
-#### `addNode(name, handler, meta, scalingFactor = 1)`
+#### `addNode(name, handler, meta, scaling): void`
 
 Adds a node to the saga.
 
@@ -46,7 +46,7 @@ Adds a node to the saga.
     - `maxNodes`: The max count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
     - `queueSizeScalingThreshold`: threshold of the queue size to run the horizontal scaling
 
-#### `addMiddleware(names, handlers)`
+#### `addMiddleware(names, handlers): void`
 
 - **Parameters:**
   - `names` (string): An array of names of the nodes to which middlewares should be applied.
@@ -55,14 +55,14 @@ Adds a node to the saga.
     - `next` (function): A function to call the next node.
     - `exit` (function): A function to complete the saga or terminate it with an error.
 
-#### `process(startNode, facts, factsMeta)`
+#### `process(startNode, facts, factsMeta): Promise<facts>`
 
 Starts the saga from the specified node.
 
 - **Parameters:**
-  - `startNode` (string): The name of the node to start the saga.
-  - `facts` (object): The initial state of the saga.
-  - `factsMeta` (object): Initial meta specific for current facts
+  - `startNode` (string, required): The name of the node to start the saga.
+  - `facts` (object, required): The initial state of the saga.
+  - `factsMeta` (object, optional): Initial meta specific for current facts
     - `executeAfter` (number): The timestamp in milliseconds after which fact processing should start.
     - `expireAfter` (number): The timestamp in milliseconds when facts should be expired and execution chain should be stopped.
     - `retriesLimit` (number): The maximum number of retries for the facts.
