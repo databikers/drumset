@@ -38,28 +38,34 @@ Adds a node to the saga.
   - `meta` (object, optional): Additional processing options for the node.
     - `retriesLimit` (number): The maximum number of retries for the node.
     - `timeoutBetweenRetries` (number): The time in milliseconds to wait between retries.
-    - `compensatorNode` (string): The name of the node to call for compensation if this node fails.
+    - `rollbackWhenErrorNode` (string): The name of the node to call for compensation if this node fails.
+    - `rollbackWhenSuccessNode` (string): The name of the node to call for rollback if this node succeeded but something went wrong in the execution chain after.
+    - `runAfterNodesSucceed` (string[]): An array of node names that must succeed before this node will start.
   - `scaling` (object, optional): Additional processing options for the node:
     - `minNodes`: The min count of concurrent nodes that use one queue.
     - `maxNodes`: The max count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
     - `queueSizeScalingThreshold`: threshold of the queue size to run the horizontal scaling
 
 #### `addMiddleware(names, handlers)`
+
 - **Parameters:**
   - `names` (string): An array of names of the nodes to which middlewares should be applied.
-  - `handlera` (function): An array of the asynchronous functions, each function receives the following arguments:
+  - `handler` (function): An array of the asynchronous functions, each function receives the following arguments:
     - `facts` (object): The current state of the saga.
     - `next` (function): A function to call the next node.
     - `exit` (function): A function to complete the saga or terminate it with an error.
 
-
-#### `process(startNode, facts)`
+#### `process(startNode, facts, factsMeta)`
 
 Starts the saga from the specified node.
 
 - **Parameters:**
   - `startNode` (string): The name of the node to start the saga.
   - `facts` (object): The initial state of the saga.
+  - `factsMeta` (object): Initial meta specific for current facts
+    - `executeAfter` (number): The timestamp in milliseconds after which fact processing should start.
+    - `expireAfter` (number): The timestamp in milliseconds when facts should be expired and execution chain should be stopped.
+    - `retriesLimit` (number): The maximum number of retries for the facts.
 - **Returns:**
   - `Promise`: Resolves with the final state of the saga or rejects with an error.
 
@@ -68,72 +74,247 @@ Starts the saga from the specified node.
 ```javascript
 const { Saga } = require('drumset');
 
-function makeCallingToUnstableAPi() {
-  return Math.random() < 0.5 ? Promise.resolve(true) : Promise.reject(new Error('Today is not your day'));
-}
+const calls = [];
+
+const facts = {
+  balance: 9,
+  amount: 10,
+  to: 'a',
+  from: 'b',
+};
 
 const saga = new Saga();
 
 saga.addNode(
-  'validateOrder',
+  'A',
   async (facts, next, exit, retry) => {
-    console.log(`validateOrder -> `);
-    if (!facts.amount) {
-      exit(new Error('Amount is required value'));
-    }
-    if (!facts.balance && facts?.balance !== 0) {
-      exit(new Error('Balance is required value'));
-    }
-    if (!facts.from) {
-      exit(new Error('Sender is required value'));
-    }
-    if (!facts.to) {
-      exit(new Error('Receiver is required value'));
-    }
-    if (facts.to === facts.from) {
-      exit(new Error(`sender and receiver couldn't be the same`));
-    }
-    if (facts.amount > facts.balance) {
-      exit(new Error('Not enough balance'));
-    }
-    facts.status = 'scheduled';
-    next('processOrder');
+    console.log(`A executed`);
+    calls.push('A');
+    next([
+      'B',
+      'C',
+    ]);
   },
-  { retriesLimit: 1 },
+  {
+    retriesLimit: 1,
+    rollbackWhenErrorNode: 'CompensateA',
+    rollbackWhenSuccessNode: 'RollbackA',
+  },
   {
     minNodes: 1,
-    maxNodes: 5,
+    maxNodes: 2,
     queueSizeScalingThreshold: 10,
   },
 );
 
 saga.addNode(
-  'processOrder',
+  'CompensateA',
   async (facts, next, exit, retry) => {
-    console.log(`processOrder -> `);
-    facts.balance -= facts.amount;
-    facts.status = 'processed';
-    next('storeOrder');
+    console.log(`CompensateA executed`);
+    calls.push('CompensateA');
+    next('Error');
   },
-  { retriesLimit: 1 },
+  {
+    retriesLimit: 1,
+  },
   {
     minNodes: 1,
-    maxNodes: 3,
+    maxNodes: 2,
     queueSizeScalingThreshold: 5,
   },
 );
 
 saga.addNode(
-  'storeOrder',
+  'RollbackA',
   async (facts, next, exit, retry) => {
-    console.log(`storeOrder -> `);
-    await makeCallingToUnstableAPi();
-    next('finalizeOrder');
+    console.log(`RollbackA executed`);
+    calls.push('RollbackA');
+  },
+  {
+    retriesLimit: 1,
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'B',
+  async (facts, next, exit, retry) => {
+    await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 1000)));
+    console.log(`B executed`);
+    calls.push('B');
+    // throw new Error('WTF something went wrong');
+    next('D');
+  },
+  {
+    retriesLimit: 2,
+    rollbackWhenErrorNode: 'CompensateB',
+    rollbackWhenSuccessNode: 'RollbackB',
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'CompensateB',
+  async (facts, next, exit, retry) => {
+    console.log(`CompensateB executed`);
+    calls.push('CompensateB');
+    next('Error');
+  },
+  {
+    retriesLimit: 1,
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'RollbackB',
+  async (facts, next, exit, retry) => {
+    console.log(`RollbackBexecuted`);
+    calls.push('RollbackB');
+  },
+  {
+    retriesLimit: 1,
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'C',
+  async (facts, next, exit, retry) => {
+    console.log(`C executed`);
+    // Move an error throwing to another node to check result
+    throw new Error('stop');
+    calls.push('C');
+    next('D');
+  },
+  {
+    retriesLimit: 1,
+    rollbackWhenErrorNode: 'CompensateC',
+    rollbackWhenSuccessNode: 'RollbackC',
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+saga.addNode(
+  'D',
+  async (facts, next, exit, retry) => {
+    console.log(`D executed`);
+    calls.push('D');
+    next('Success');
+  },
+  {
+    retriesLimit: 1,
+    rollbackWhenErrorNode: 'CompensateD',
+    rollbackWhenSuccessNode: 'RollbackD',
+    runAfterNodesSucceed: [
+      'B',
+      'C',
+    ],
+  },
+  {
+    minNodes: 2,
+    maxNodes: 4,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'CompensateC',
+  async (facts, next, exit, retry) => {
+    console.log(`CompensateC executed`);
+    calls.push('CompensateC');
+    next('Error');
+  },
+  {
+    retriesLimit: 3,
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'CompensateD',
+  async (facts, next, exit, retry) => {
+    console.log(`CompensateD executed`);
+    calls.push('CompensateD');
+    next('Error');
+  },
+  {
+    retriesLimit: 3,
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'RollbackC',
+  async (facts, next, exit, retry) => {
+    await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 2000)));
+    console.log(`RollbackC executed`);
+    calls.push('RollbackC');
+  },
+  {
+    retriesLimit: 1,
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'RollbackD',
+  async (facts, next, exit, retry) => {
+    await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 2000)));
+    console.log(`RollbackD executed`);
+    calls.push('RollbackD');
+  },
+  {
+    retriesLimit: 1,
+  },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'Error',
+  async (facts, next, exit, retry) => {
+    console.log(`Error executed`);
+    calls.push('Error');
+    exit(new Error('WTF'));
   },
   {
     retriesLimit: 2,
     timeoutBetweenRetries: 1000,
-    compensatorNode: 'compensateStoreOrder',
   },
   {
     minNodes: 1,
@@ -143,12 +324,11 @@ saga.addNode(
 );
 
 saga.addNode(
-  'compensateStoreOrder',
-  async (facts, next, exit, retry) => {
-    console.log(`compensateStoreOrder -> `);
-    facts.balance += facts.amount;
-    facts.status = 'declined';
-    exit(new Error('Transaction declined'));
+  'Success',
+  async (facts, next, exit) => {
+    console.log(`Success executed`);
+    calls.push('Success');
+    exit();
   },
   { retriesLimit: 1 },
   {
@@ -158,63 +338,58 @@ saga.addNode(
   },
 );
 
-saga.addNode(
-  'finalizeOrder',
-  async function (facts, next, exit, retry) {
-    console.log(`finalizeOrder -> `);
-    facts.txn_id = new Date().getTime().toString(16);
-    facts.status = 'completed';
-    exit();
-  },
-  { retriesLimit: 1 },
-  {
-    minNodes: 1,
-    maxNodes: 3,
-    queueSizeScalingThreshold: 5,
-  },
-);
-
-const facts = {
-  balance: 1000,
-  amount: 10,
-  to: 'a',
-  from: 'b',
-};
+setTimeout(() => {
+  // Take a look behind the scenes to check all running nodes
+  console.log(calls);
+}, 10000);
 
 saga
-  .process('validateOrder', facts)
+  .process('A', facts)
   .then((result) => {
     console.log({ result });
   })
-  .catch(console.error);
+  .catch((error) => console.log({ error }))
+  .finally(() => {
+    // Take a look what nodes were running when you receive reply
+    console.log(calls);
+  });
 ```
 
-### Middlewares 
+### Middlewares
+
 ```typescript
 saga.addMiddleware(
   [
-    'storeOrder'
+    'A',
+    'D'
   ],
   [
-    (facts, next, exit) => {
-      if (facts.someThing) {
-        next('restoreOrder');
-      }
-    }
-  ]
-)
-
-
+    async (facts) => {
+      console.log(`Middleware executed`);
+    },
+  ],
+);
 ```
 
 ### Node Definitions
+Here we have the next nodes:
+- A: our saga`s entry point
+- RollbackA: rollbacks succeeded A if something went wrong in the execution chain after that
+- CompensateA: rollbacks failed A and goes to the Error node
+- B: is executing simultaneously with node C
+- C: is executing simultaneously with node B
+- RollbackB: the same as RollbackA but for the node B
+- CompensateB: the same as CompensateA but for the node B
+- RollbackC: ...
+- CompensateC: ...
+- D: run if B and C nodes both succeeded 
+- RollbackD: ...
+- CompensateD: ...
+- Error: prepare and returns error response
+- Success: prepare and returns success response
 
-1. **validateOrder**: Validates the order details such as `amount`, `balance`, `from`, and `to` addresses. It ensures the order is valid before proceeding.
+### Our saga`s graph
+![graph](static/graph.png)
 
-2. **processOrder**: Deducts the order amount from the balance and updates the status to `processed`.
+#### [Take a look at the sandbox](sandbox/example.js)
 
-3. **storeOrder**: Attempts to store the order and calls an unstable API. This node has retry logic with a limit and timeout, and a compensator node to handle failures.
-
-4. **compensateStoreOrder**: Compensates for the order in case of failure by restoring the balance and setting the status to `declined`.
-
-5. **finalizeOrder**: Finalizes the order by generating a transaction ID and setting the status to `completed`.
