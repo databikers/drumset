@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 import { v4 } from 'uuid';
 import { SagaOptions, Scaling } from '@options';
-import { Executor, Facts, FactsMeta, FactsMetaContract, Middleware, NodeMeta } from '@parameters';
-import { defaultFactsMeta, defaultSagaOptions, defaultScaling, FactsStatus } from '@const';
+import { Executor, Facts, FactsMetaContract, Middleware, NodeMeta } from '@parameters';
+import { defaultSagaOptions, defaultScaling, FactsStatus } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Processor, RoundRobinProxy } from '@node';
 import { validateAddNodeParams, validateFactsMeta, validateSagaOptions } from '@helper';
@@ -64,7 +64,7 @@ export class Saga<DataType, NodeName extends string> {
     }
   }
 
-  public process(startNode: NodeName, data: DataType, factsMeta?: Partial<FactsMetaContract<NodeName>>) {
+  public process(startNode: NodeName, data: DataType, factsMeta?: Pick<FactsMetaContract<NodeName>, 'expireAfter' | 'executeAfter' | 'retriesLimit'>) {
     if (!startNode || !this.nodes.has(startNode)) {
       throw new Error(`Node ${startNode} doesn't exist`);
     }
@@ -91,8 +91,14 @@ export class Saga<DataType, NodeName extends string> {
       used: false,
     };
     const nodeMeta = this.meta.get(startNode);
-    factsMeta = Object.assign({}, factsMeta);
-    facts.meta.set(startNode, { ...(factsMeta as FactsMetaContract<NodeName>), ...nodeMeta } || defaultFactsMeta);
+    const { expireAfter, executeAfter, retriesLimit } = Object.assign({}, factsMeta);
+    const meta = {
+      ...nodeMeta,
+      expireAfter,
+      executeAfter,
+      retriesLimit: retriesLimit || nodeMeta.retriesLimit,
+    }
+    facts.meta.set(startNode, meta as FactsMetaContract<NodeName>);
     facts.meta.get(startNode).node = startNode;
     this.facts.set(facts.id, facts);
     return new Promise((resolve, reject) => {
