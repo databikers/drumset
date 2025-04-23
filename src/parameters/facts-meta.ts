@@ -9,7 +9,7 @@ export type FactsMetaContract<NodeName> = {
   rollbackWhenErrorNode?: NodeName;
   rollbackWhenSuccessNode?: NodeName;
   retrying?: boolean;
-  runAfterNodes: NodeName[];
+  runAfterNodesSucceed: NodeName[];
 };
 
 export type FactsMeta<NodeName extends string> = Map<NodeName, FactsMetaContract<NodeName>>;

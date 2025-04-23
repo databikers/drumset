@@ -7,5 +7,5 @@ export type NodeMeta = {
   timeoutBetweenRetries: number;
   rollbackWhenErrorNode?: string;
   rollbackWhenSuccessNode?: string;
-  runAfterNodes?: string[];
+  runAfterNodesSucceed?: string[];
 };

@@ -7,7 +7,7 @@ export enum FactsMetaKeys {
   ROLLBACK_WHEN_SUCCESS_NODE = 'rollbackWhenSuccessNode',
   TIMEOUT_BETWEEN_RETRIES = 'timeoutBetweenRetries',
   LAST_RETRY_TIME = 'lastRetryTime',
-  RUN_AFTER_NODES = 'runAfterNodes',
+  RUN_AFTER_NODES_SUCCEED = 'runAfterNodesSucceed',
 }
 
 export const factsMetaKeys: string[] = Object.values(FactsMetaKeys);
