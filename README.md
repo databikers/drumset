@@ -67,7 +67,7 @@ Starts the saga from the specified node.
     - `expireAfter` (number): The timestamp in milliseconds when facts should be expired and execution chain should be stopped.
     - `retriesLimit` (number): The maximum number of retries for the facts.
 - **Returns:**
-  - `Promise`: Resolves with the final state of the saga or rejects with an error.
+  - `Promise`: Resolves with the final state (the same contract you defined for the facts argument) of the saga or rejects with an error.
 
 ### Example Usage:
 
@@ -361,7 +361,7 @@ saga
 saga.addMiddleware(
   [
     'A',
-    'D'
+    'D',
   ],
   [
     async (facts) => {
@@ -372,7 +372,9 @@ saga.addMiddleware(
 ```
 
 ### Node Definitions
+
 Here we have the next nodes:
+
 - A: our saga`s entry point
 - RollbackA: rollbacks succeeded A if something went wrong in the execution chain after that
 - CompensateA: rollbacks failed A and goes to the Error node
@@ -382,14 +384,14 @@ Here we have the next nodes:
 - CompensateB: the same as CompensateA but for the node B
 - RollbackC: ...
 - CompensateC: ...
-- D: run if B and C nodes both succeeded 
+- D: run if B and C nodes both succeeded
 - RollbackD: ...
 - CompensateD: ...
 - Error: prepare and returns error response
 - Success: prepare and returns success response
 
 ### Our saga`s graph
+
 ![graph](static/graph.png)
 
 #### [Take a look at the sandbox](sandbox/example.js)
-
