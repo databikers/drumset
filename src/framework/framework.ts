@@ -25,11 +25,16 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
         }
         const nodeMeta: NodeMeta = this.options.meta.get(n);
         if (nodeMeta?.runAfterNodesSucceed?.length) {
-          const needWait: boolean = nodeMeta?.runAfterNodesSucceed.some((name: NodeName) => !facts.processedNodes.has(name));
+          const needWait: boolean = nodeMeta?.runAfterNodesSucceed.some(
+            (name: NodeName) => !facts.processedNodes.has(name),
+          );
           if (needWait) {
-            const needExit: boolean = nodeMeta?.runAfterNodesSucceed.some((name: NodeName) => facts.failedNodes.has(name));
+            const needExit: boolean = nodeMeta?.runAfterNodesSucceed.some((name: NodeName) =>
+              facts.failedNodes.has(name),
+            );
             if (needExit) {
-              const [errorNode] = nodeMeta?.runAfterNodesSucceed.filter((name: NodeName) => facts.failedNodes.has(name)) || [];
+              const [errorNode] =
+                nodeMeta?.runAfterNodesSucceed.filter((name: NodeName) => facts.failedNodes.has(name)) || [];
               return this.exit(facts, errorNode ? facts.nodeErrors.get(errorNode as NodeName) : undefined);
             }
             continue;

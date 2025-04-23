@@ -64,7 +64,11 @@ export class Saga<DataType, NodeName extends string> {
     }
   }
 
-  public process(startNode: NodeName, data: DataType, factsMeta?: Pick<FactsMetaContract<NodeName>, 'expireAfter' | 'executeAfter' | 'retriesLimit'>) {
+  public process(
+    startNode: NodeName,
+    data: DataType,
+    factsMeta?: Pick<FactsMetaContract<NodeName>, 'expireAfter' | 'executeAfter' | 'retriesLimit'>,
+  ): Promise<DataType> {
     if (!startNode || !this.nodes.has(startNode)) {
       throw new Error(`Node ${startNode} doesn't exist`);
     }
@@ -97,7 +101,7 @@ export class Saga<DataType, NodeName extends string> {
       expireAfter,
       executeAfter,
       retriesLimit: retriesLimit || nodeMeta.retriesLimit,
-    }
+    };
     facts.meta.set(startNode, meta as FactsMetaContract<NodeName>);
     facts.meta.get(startNode).node = startNode;
     this.facts.set(facts.id, facts);
@@ -108,7 +112,7 @@ export class Saga<DataType, NodeName extends string> {
           this.options.logger.log(facts.stats);
         }
         this.facts.delete(facts.id);
-        return error ? reject(error) : resolve(facts);
+        return error ? reject(error) : resolve(facts.data);
       });
       this.framework.next(startNode, facts);
     });
