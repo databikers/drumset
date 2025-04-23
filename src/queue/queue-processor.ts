@@ -68,13 +68,13 @@ export class QueueProcessor<DataType, NodeName extends string> {
                 item.inUse.delete(this.name);
                 item.processedNodes.add(this.name);
                 if (meta.rollbackWhenSuccessNode) {
-                  item.rollbacks.add(meta.rollbackWhenSuccessNode)
+                  item.rollbacks.add(meta.rollbackWhenSuccessNode);
                 }
                 framework.next(node, item);
               },
               (error?: Error) => {
                 if (meta.rollbackWhenErrorNode) {
-                  item.activeCompensator.add(meta.rollbackWhenErrorNode)
+                  item.activeCompensator.add(meta.rollbackWhenErrorNode);
                 }
                 framework.exit(item, error);
               },
@@ -100,7 +100,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
             if (meta.rollbackWhenErrorNode) {
               item.activeCompensator.add(meta.rollbackWhenErrorNode);
               if (meta.rollbackWhenSuccessNode) {
-                item.rollbacks.delete(meta.rollbackWhenSuccessNode)
+                item.rollbacks.delete(meta.rollbackWhenSuccessNode);
               }
               framework.next(meta.rollbackWhenErrorNode, item);
             } else {

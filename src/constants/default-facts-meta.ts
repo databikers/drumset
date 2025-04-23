@@ -9,5 +9,5 @@ export const defaultFactsMeta: FactsMetaContract<any> = {
   retries: 0,
   timeoutBetweenRetries: 0,
   retrying: false,
-  runAfterNodes: []
+  runAfterNodes: [],
 };

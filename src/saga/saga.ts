@@ -92,7 +92,7 @@ export class Saga<DataType, NodeName extends string> {
     };
     const nodeMeta = this.meta.get(startNode);
     factsMeta = Object.assign({}, factsMeta);
-    facts.meta.set(startNode, { ...factsMeta as FactsMetaContract<NodeName>, ...nodeMeta } || defaultFactsMeta);
+    facts.meta.set(startNode, { ...(factsMeta as FactsMetaContract<NodeName>), ...nodeMeta } || defaultFactsMeta);
     facts.meta.get(startNode).node = startNode;
     this.facts.set(facts.id, facts);
     return new Promise((resolve, reject) => {

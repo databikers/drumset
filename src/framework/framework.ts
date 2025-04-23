@@ -29,8 +29,8 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
           if (needWait) {
             const needExit: boolean = nodeMeta?.runAfterNodes.some((name: NodeName) => facts.failedNodes.has(name));
             if (needExit) {
-              const [ errorNode ] = nodeMeta?.runAfterNodes.filter((name: NodeName) => facts.failedNodes.has(name)) || [];
-              return this.exit(facts, errorNode ? facts.nodeErrors.get(errorNode as NodeName) : undefined)
+              const [errorNode] = nodeMeta?.runAfterNodes.filter((name: NodeName) => facts.failedNodes.has(name)) || [];
+              return this.exit(facts, errorNode ? facts.nodeErrors.get(errorNode as NodeName) : undefined);
             }
             continue;
           }
