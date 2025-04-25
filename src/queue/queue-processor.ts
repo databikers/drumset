@@ -48,7 +48,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
             for (const m of middlewares) {
               await m(
                 item.data,
-                (node: NodeName) => {
+                (node: NodeName | NodeName[]) => {
                   item.inUse.delete(this.name);
                   item.processedNodes.add(this.name);
                   item.meta.delete(this.name);
@@ -64,7 +64,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
             item.enqueuedNodes.add(this.name);
             await executor(
               item.data,
-              (node: NodeName) => {
+              (node: NodeName | NodeName[]) => {
                 item.inUse.delete(this.name);
                 item.processedNodes.add(this.name);
                 if (meta.rollbackWhenSuccessNode) {

@@ -1,4 +1,4 @@
-export type ExecutorNextFunction<NodeName> = (node: NodeName) => void;
+export type ExecutorNextFunction<NodeName> = (node: NodeName | NodeName[]) => void;
 export type ExecutorExitFunction = (error?: Error) => void;
 export type ExecutorRetryFunction = (error?: Error) => void;
 
