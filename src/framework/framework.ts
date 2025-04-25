@@ -20,7 +20,10 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
         if (!this.options.nodes.has(n)) {
           return this.exit(facts, new Error(`Node ${n} doesn't exist`));
         }
-        if (facts.processedNodes.has(n) || (facts.used && !facts.rollbacks.has(n) && facts.activeCompensator.has(n))) {
+        if (
+          facts.processedNodes.has(n) ||
+          (facts.used && !facts.rollbacks.has(n) && !facts.activeCompensator.has(n) && !facts.afterPivotSucceed.has(n))
+        ) {
           continue;
         }
         const nodeMeta: NodeMeta = this.options.meta.get(n);
@@ -54,7 +57,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
         const { id } = facts;
         if (
           (!facts.inUse.size || nodes.includes(n)) &&
-          (!facts.used || facts.activeCompensator.has(n) || facts.rollbacks.has(n))
+          (!facts.used || facts.activeCompensator.has(n) || facts.rollbacks.has(n)|| facts.afterPivotSucceed.has(n))
         ) {
           facts.inUse.add(n);
           meta.lastRetryTime = new Date().getTime();
@@ -68,16 +71,28 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
     }
   }
 
-  public exit(facts: Facts<DataType, NodeName>, error?: Error) {
+  public exit(facts: Facts<DataType, NodeName>, exitWith?: Error | NodeName | NodeName[]) {
+    if (facts.used) {
+      return;
+    }
     facts.used = true;
     facts.status = FactsStatus.PROCESSED;
     facts.stats[FactsStatus.PROCESSED] = new Date().getTime();
-    if (error) {
+    const isError: boolean = exitWith instanceof Error;
+    if (isError) {
       facts.rollbacks.forEach((node: NodeName) => {
         this.next(node, facts);
       });
+    } else {
+      const nodes = Array.isArray(exitWith) ? exitWith : [exitWith];
+      nodes.forEach((node: NodeName) => {
+        facts.afterPivotSucceed.add(node);
+      })
+      nodes.forEach((node: NodeName) => {
+        this.next(node, facts);
+      })
     }
-    this.options.eventEmitter.emit(facts.id, error, facts.data);
+    this.options.eventEmitter.emit(facts.id, isError ? exitWith : undefined, facts.data);
   }
 
   public retry(node: NodeName, facts: Facts<DataType, NodeName>, error?: Error) {

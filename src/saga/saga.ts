@@ -92,6 +92,7 @@ export class Saga<DataType, NodeName extends string> {
       inUse: new Set(),
       activeCompensator: new Set(),
       rollbacks: new Set(),
+      afterPivotSucceed: new Set(),
       used: false,
     };
     const nodeMeta = this.meta.get(startNode);
@@ -107,12 +108,13 @@ export class Saga<DataType, NodeName extends string> {
     this.facts.set(facts.id, facts);
     return new Promise((resolve, reject) => {
       this.eventEmitter.on(facts.id, (error, facts) => {
+        console.log({ error, facts })
         this.eventEmitter.removeAllListeners(facts.id);
         if (this.options.verbose) {
           this.options.logger.log(facts.stats);
         }
         this.facts.delete(facts.id);
-        return error ? reject(error) : resolve(facts.data);
+        return error ? reject(error) : resolve(facts);
       });
       this.framework.next(startNode, facts);
     });

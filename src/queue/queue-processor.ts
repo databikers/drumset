@@ -54,9 +54,11 @@ export class QueueProcessor<DataType, NodeName extends string> {
                   item.meta.delete(this.name);
                   framework.next(node, item);
                 },
-                (error?: Error) => {
-                  item.meta.delete(this.name);
-                  item.failedNodes.add(this.name);
+                (error?: Error | NodeName | NodeName[]) => {
+                  if (error instanceof Error) {
+                    item.meta.delete(this.name);
+                    item.failedNodes.add(this.name);
+                  }
                   framework.exit(item, error);
                 },
               );
@@ -65,6 +67,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
             await executor(
               item.data,
               (node: NodeName | NodeName[]) => {
+                console.log({ next: node, from: this.name })
                 item.inUse.delete(this.name);
                 item.processedNodes.add(this.name);
                 if (meta.rollbackWhenSuccessNode) {
@@ -72,9 +75,11 @@ export class QueueProcessor<DataType, NodeName extends string> {
                 }
                 framework.next(node, item);
               },
-              (error?: Error) => {
-                if (meta.rollbackWhenErrorNode) {
-                  item.activeCompensator.add(meta.rollbackWhenErrorNode);
+              (error?: Error | NodeName | NodeName[]) => {
+                if (error instanceof Error) {
+                  if (meta.rollbackWhenErrorNode) {
+                    item.activeCompensator.add(meta.rollbackWhenErrorNode);
+                  }
                 }
                 framework.exit(item, error);
               },

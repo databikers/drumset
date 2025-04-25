@@ -13,6 +13,7 @@ export type Facts<DataType, NodeName extends string> = {
   stats: Partial<Record<FactsStatus, number>> & { retries?: Map<NodeName, number> };
   activeCompensator: Set<NodeName>;
   rollbacks: Set<NodeName>;
+  afterPivotSucceed: Set<NodeName>;
   inUse: Set<NodeName>;
   used: boolean;
 };
