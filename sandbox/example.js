@@ -72,7 +72,7 @@ saga.addNode(
     await new Promise((resolve) => setTimeout(resolve, Math.round(Math.random() * 1000)));
     console.log(`B executed`);
     calls.push('B');
-    // throw new Error('WTF something went wrong');
+    // throw new Error('Something went wrong');
     next('D');
   },
   {
@@ -125,7 +125,7 @@ saga.addNode(
   async (facts, next, exit, retry) => {
     console.log(`C executed`);
     // Move an error throwing to another node to check result
-    throw new Error('stop');
+    // throw new Error('Something went wrong');
     calls.push('C');
     next('D');
   },
@@ -254,6 +254,21 @@ saga.addNode(
   async (facts, next, exit) => {
     console.log(`Success executed`);
     calls.push('Success');
+    exit('E');
+  },
+  { retriesLimit: 1 },
+  {
+    minNodes: 1,
+    maxNodes: 2,
+    queueSizeScalingThreshold: 5,
+  },
+);
+
+saga.addNode(
+  'E',
+  async (facts, next, exit) => {
+    console.log(`E executed`);
+    calls.push('E');
     exit();
   },
   { retriesLimit: 1 },
@@ -284,7 +299,7 @@ saga
   .then((result) => {
     console.log({ result });
   })
-  .catch((er) => console.log({ er }))
+  .catch((error) => console.log({ error }))
   .finally(() => {
     console.log(calls);
   });
