@@ -33,7 +33,7 @@ Adds a node to the saga.
   - `handler` (function): An asynchronous function that performs the node's operation. The function receives the following arguments:
     - `facts` (object): The current state of the saga.
     - `next` (function): A function to call the next node.
-    - `exit` (function): A function to complete the saga or terminate it with an error.
+    - `exit` (function): A function to complete the saga or terminate it with an error e.g. exit(new Error('somethingWentWrong')), if if you reach your pivot point you can exit with nodes which you want to run after the result returning. e.g. exit(['node1', 'node2']).
     - `retry` (function): A function to retry processing of the facts on the current node.
   - `meta` (object, optional): Additional processing options for the node.
     - `retriesLimit` (number): The maximum number of retries for the node.
