@@ -5,14 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.0.4] - 2025-04-24
+
+### Fixed
+
+- Fixed ExecutorNextFunction contract: allow NodeName[] as proper arg for next();
+- Removed **lastRetryTime** from NodeMeta;
+
 ## [3.0.3] - 2025-04-24
 
 ### Fixed
 
 - Fixed export: added FactsMetaContract, NodeMeta, and Scaling contracts;
 - Removed **lastRetryTime** from NodeMeta;
-
-- Fixed export: added FactsMetaContract, NodeMeta, and Scaling contracts;
 
 ## [3.0.2] - 2025-04-23
 
