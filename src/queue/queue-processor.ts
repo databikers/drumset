@@ -67,7 +67,6 @@ export class QueueProcessor<DataType, NodeName extends string> {
             await executor(
               item.data,
               (node: NodeName | NodeName[]) => {
-                console.log({ next: node, from: this.name })
                 item.inUse.delete(this.name);
                 item.processedNodes.add(this.name);
                 if (meta.rollbackWhenSuccessNode) {

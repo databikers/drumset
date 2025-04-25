@@ -108,7 +108,6 @@ export class Saga<DataType, NodeName extends string> {
     this.facts.set(facts.id, facts);
     return new Promise((resolve, reject) => {
       this.eventEmitter.on(facts.id, (error, facts) => {
-        console.log({ error, facts })
         this.eventEmitter.removeAllListeners(facts.id);
         if (this.options.verbose) {
           this.options.logger.log(facts.stats);
