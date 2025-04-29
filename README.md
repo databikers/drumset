@@ -35,6 +35,7 @@ Adds a node to the saga.
     - `next` (function): A function to call the next node.
     - `exit` (function): A function to complete the saga or terminate it with an error e.g. exit(new Error('somethingWentWrong')), if if you reach your pivot point you can exit with nodes which you want to run after the result returning. e.g. exit(['node1', 'node2']).
     - `retry` (function): A function to retry processing of the facts on the current node.
+    - `error` (Error, optional): An error that caused first.
   - `meta` (object, optional): Additional processing options for the node.
     - `retriesLimit` (number): The maximum number of retries for the node.
     - `timeoutBetweenRetries` (number): The time in milliseconds to wait between retries.
@@ -307,10 +308,10 @@ saga.addNode(
 
 saga.addNode(
   'Error',
-  async (facts, next, exit, retry) => {
+  async (facts, next, exit, retry, error) => {
     console.log(`Error executed`);
     calls.push('Error');
-    exit(new Error('WTF'));
+    exit(error);
   },
   {
     retriesLimit: 2,
