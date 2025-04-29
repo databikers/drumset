@@ -41,7 +41,6 @@ export class QueueProcessor<DataType, NodeName extends string> {
               return framework.next(this.name, item);
             }
           }
-
           meta.lastRetryTime = new Date().getTime();
           try {
             const middlewares = this.middleware.get(this.name) || [];
@@ -85,11 +84,16 @@ export class QueueProcessor<DataType, NodeName extends string> {
               (error?: Error) => {
                 framework.retry(this.name, item, error);
               },
+              item.error
             );
             if (item.rollbacks.has(this.name)) {
               item.processedNodes.add(this.name);
             }
           } catch (error) {
+            if (!item.error) {
+              console.log('set error', error)
+              item.error = error;
+            }
             const meta = item.meta.get(this.name);
             item.nodeErrors.set(this.name, error);
             meta.lastRetryTime = now;
