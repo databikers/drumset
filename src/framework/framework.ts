@@ -57,7 +57,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
         const { id } = facts;
         if (
           (!facts.inUse.size || nodes.includes(n)) &&
-          (!facts.used || facts.activeCompensator.has(n) || facts.rollbacks.has(n)|| facts.afterPivotSucceed.has(n))
+          (!facts.used || facts.activeCompensator.has(n) || facts.rollbacks.has(n) || facts.afterPivotSucceed.has(n))
         ) {
           facts.inUse.add(n);
           meta.lastRetryTime = new Date().getTime();
@@ -87,10 +87,10 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
       const nodes = Array.isArray(exitWith) ? exitWith : [exitWith];
       nodes.forEach((node: NodeName) => {
         facts.afterPivotSucceed.add(node);
-      })
+      });
       nodes.forEach((node: NodeName) => {
         this.next(node, facts);
-      })
+      });
     }
     this.options.eventEmitter.emit(facts.id, isError ? exitWith : undefined, facts.data);
   }
