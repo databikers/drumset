@@ -143,6 +143,7 @@ saga.addNode(
 saga.addNode(
   'D',
   async (facts, next, exit, retry) => {
+    throw new Error('Something went wrong');
     console.log(`D executed`);
     calls.push('D');
     next('Success');
@@ -233,10 +234,10 @@ saga.addNode(
 
 saga.addNode(
   'Error',
-  async (facts, next, exit, retry) => {
+  async (facts, next, exit, retry, error) => {
     console.log(`Error executed`);
     calls.push('Error');
-    exit(new Error('WTF'));
+    exit(error);
   },
   {
     retriesLimit: 2,
