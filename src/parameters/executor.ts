@@ -7,6 +7,7 @@ export type Executor<DataType, NodeName extends string> = (
   next: ExecutorNextFunction<NodeName>,
   exit: ExecutorExitFunction<NodeName>,
   retry: ExecutorRetryFunction,
+  error?: Error
 ) => Promise<any> | any;
 
 export type Middleware<DataType, NodeName extends string> = (

@@ -15,5 +15,6 @@ export type Facts<DataType, NodeName extends string> = {
   rollbacks: Set<NodeName>;
   afterPivotSucceed: Set<NodeName>;
   inUse: Set<NodeName>;
-  used: boolean;
+  used?: boolean;
+  error?: Error;
 };
