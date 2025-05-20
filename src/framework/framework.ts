@@ -100,6 +100,9 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
     const meta = facts.meta.get(node);
     const { retries, retriesLimit } = meta;
     if (retries < retriesLimit && !facts.used) {
+      meta.retries = meta.retries || 0;
+      meta.retries += 1;
+      facts.stats.retries.set(node, meta.retries);
       meta.retrying = true;
       return this.next(node, facts);
     }

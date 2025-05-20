@@ -98,9 +98,6 @@ export class QueueProcessor<DataType, NodeName extends string> {
             item.nodeErrors.set(this.name, error);
             meta.lastRetryTime = now;
             if (meta.retries < meta.retriesLimit) {
-              meta.retries = meta.retries || 0;
-              meta.retries += 1;
-              item.stats.retries.set(this.name, meta.retries);
               return framework.retry(this.name, item, error);
             }
             item.failedNodes.add(this.name);
