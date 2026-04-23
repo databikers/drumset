@@ -1,3 +1,3 @@
 export interface Logger {
-  log(...params: any[]): void;
+  log(...args: any[]): void;
 }
