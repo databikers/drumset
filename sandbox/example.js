@@ -107,7 +107,7 @@ saga.addNode(
 saga.addNode(
   'RollbackB',
   async (facts, next, exit, retry) => {
-    console.log(`RollbackBexecuted`);
+    console.log(`RollbackB executed`);
     calls.push('RollbackB');
   },
   {
