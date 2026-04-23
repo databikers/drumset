@@ -5,19 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.2.3] - 2026-04-23
+
+### development
+
+- Updated dependencies
+
+### fixed
+
+- Made saga verbose by default
+
+## [3.2.2] - 2026-03-23
+
+### development
+
+- Updated dependencies
+
 ## [3.2.1] - 2025-07-29
 
 ### fixed
 
 - Immediately call executor first time
 
-
 ## [3.2.0] - 2025-05-21
 
 ### fixed
 
 - Fixed timeout between retries
-
 
 ## [3.1.3] - 2025-05-03
 
