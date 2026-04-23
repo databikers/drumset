@@ -2,6 +2,6 @@ import { SagaOptions } from '@options';
 import { Logger } from '@logger';
 
 export const defaultSagaOptions: SagaOptions = {
-  verbose: false,
+  verbose: true,
   logger: console as Logger,
 };
