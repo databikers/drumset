@@ -37,14 +37,14 @@ export class QueueProcessor<DataType, NodeName extends string> {
             const timeoutValueExecuteAfter = executeAfter - now;
             setTimeout(() => {
               framework.next(this.name, item);
-            }, timeoutValueExecuteAfter)
+            }, timeoutValueExecuteAfter);
             return;
           }
           if (meta.retrying) {
             setTimeout(() => {
               framework.next(this.name, item);
-            }, timeoutBetweenRetries||0)
-            return ;
+            }, timeoutBetweenRetries || 0);
+            return;
           }
           meta.lastRetryTime = new Date().getTime();
           try {
@@ -90,7 +90,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
                 setTimeout(() => {
                   meta.retrying = true;
                   framework.retry(this.name, item, error);
-                }, timeoutBetweenRetries || 0)
+                }, timeoutBetweenRetries || 0);
               },
               item.error,
             );
@@ -107,8 +107,8 @@ export class QueueProcessor<DataType, NodeName extends string> {
               setTimeout(() => {
                 meta.retrying = true;
                 framework.retry(this.name, item);
-              }, timeoutBetweenRetries||0)
-              return ;
+              }, timeoutBetweenRetries || 0);
+              return;
             }
             item.failedNodes.add(this.name);
             item.meta.delete(this.name);
