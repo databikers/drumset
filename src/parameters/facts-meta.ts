@@ -12,4 +12,4 @@ export type FactsMetaContract<NodeName> = {
   runAfterNodesSucceed: NodeName[];
 };
 
-export type FactsMeta<NodeName extends string> = Map<NodeName, FactsMetaContract<NodeName>>;
+export type FactsMeta<NodeName extends string> = Record<NodeName, FactsMetaContract<NodeName>>;

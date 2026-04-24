@@ -6,6 +6,7 @@ import { defaultSagaOptions, defaultScaling, FactsStatus } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Processor, RoundRobinProxy } from '@node';
 import { validateAddNodeParams, validateFactsMeta, validateSagaOptions } from '@helper';
+import { FactsStats } from '../parameters/facts-stats';
 
 export class Saga<DataType, NodeName extends string> {
   protected options: SagaOptions;
@@ -81,13 +82,11 @@ export class Saga<DataType, NodeName extends string> {
       processedNodes: new Set<NodeName>(),
       enqueuedNodes: new Set<NodeName>(),
       failedNodes: new Set<NodeName>(),
-      nodeErrors: new Map<NodeName, Error>(),
+      nodeErrors: {} as Record<NodeName, string>,
+      currentNode: startNode,
       data,
-      meta: new Map<NodeName, FactsMetaContract<NodeName>>(),
-      stats: {
-        retries: new Map<NodeName, number>(),
-        [FactsStatus.ENQUEUED]: new Date().getTime(),
-      },
+      meta: {} as Record<NodeName, FactsMetaContract<NodeName>>,
+      stats: { [startNode]: { enqueued: Date.now(), errors: [], retries: 0 } } as FactsStats<NodeName>,
       status: FactsStatus.ENQUEUED,
       inUse: new Set(),
       activeCompensator: new Set(),
@@ -103,14 +102,14 @@ export class Saga<DataType, NodeName extends string> {
       executeAfter,
       retriesLimit: retriesLimit || nodeMeta.retriesLimit,
     };
-    facts.meta.set(startNode, meta as FactsMetaContract<NodeName>);
-    facts.meta.get(startNode).node = startNode;
+    facts.meta[startNode] = meta as FactsMetaContract<NodeName>;
+    facts.meta[startNode].node = startNode;
     this.facts.set(facts.id, facts);
     return new Promise((resolve, reject) => {
-      this.eventEmitter.on(facts.id, (error, facts) => {
+      this.eventEmitter.on(facts.id, (error, facts, stats) => {
         this.eventEmitter.removeAllListeners(facts.id);
         if (this.options.verbose) {
-          this.options.logger.log(facts.stats);
+          this.options.logger.log(stats, 'stats');
         }
         this.facts.delete(facts.id);
         return error ? reject(error) : resolve(facts);

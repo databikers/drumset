@@ -1,6 +1,6 @@
 import { defaultFactsMeta, FactsStatus } from '@const';
 import { FrameworkOptions } from '@options';
-import { Facts, NodeMeta } from '@parameters';
+import { Facts, FactsMeta, FactsMetaContract, NodeMeta } from '@parameters';
 import { FrameworkInterface } from './framework-interface';
 
 export class Framework<DataType, NodeName extends string> implements FrameworkInterface<DataType, NodeName> {
@@ -10,14 +10,18 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
   }
 
   public next(node: NodeName | NodeName[], facts: Facts<DataType, NodeName>) {
+    facts.stats[facts.currentNode].processed = Date.now();
     let nodes = Array.isArray(node) ? node.filter((item: any) => typeof item === 'string' && item) : [node];
     nodes = nodes.filter((item: any) => typeof item === 'string' && item);
     if (!nodes.length) {
-      return this.exit(facts, new Error('next function requires a non-empty array/string'));
+      const errorMessage: string = 'next function requires a non-empty array/string';
+      facts.stats[facts.currentNode].errors.push(errorMessage);
+      return this.exit(facts, new Error(errorMessage));
     }
     if (facts) {
       for (const n of nodes) {
         if (!this.options.nodes.has(n)) {
+          facts.stats[facts.currentNode].errors.push(`Node ${n} doesn't exist`);
           return this.exit(facts, new Error(`Node ${n} doesn't exist`));
         }
         if (
@@ -38,21 +42,24 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
             if (needExit) {
               const [errorNode] =
                 nodeMeta?.runAfterNodesSucceed.filter((name: NodeName) => facts.failedNodes.has(name)) || [];
-              return this.exit(facts, errorNode ? facts.nodeErrors.get(errorNode as NodeName) : undefined);
+              return this.exit(
+                facts,
+                errorNode ? new Error(facts.nodeErrors[errorNode as NodeName] as string) : undefined,
+              );
             }
             continue;
           }
         }
-        if (!facts.meta.has(n)) {
-          facts.meta.set(n, {
+        if (!facts.meta[n]) {
+          facts.meta[n] = {
             ...defaultFactsMeta,
             ...nodeMeta,
             node: n,
-          });
+          } as FactsMetaContract<NodeName>;
         } else {
-          facts.meta.get(n).node = n;
+          facts.meta[n].node = n;
         }
-        const meta = facts.meta.get(n);
+        const meta = facts.meta[n];
         meta.retrying = false;
         const { id } = facts;
         if (
@@ -60,7 +67,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
           (!facts.used || facts.activeCompensator.has(n) || facts.rollbacks.has(n) || facts.afterPivotSucceed.has(n))
         ) {
           facts.inUse.add(n);
-          meta.lastRetryTime = new Date().getTime();
+          meta.lastRetryTime = Date.now();
           this.options.nodes.get(n).process(facts);
         } else if (facts.used && this.options.verbose) {
           this.options.logger.log(`Saga has been finished for facts: ${id}, node: ${n})`);
@@ -77,7 +84,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
     }
     facts.used = true;
     facts.status = FactsStatus.PROCESSED;
-    facts.stats[FactsStatus.PROCESSED] = new Date().getTime();
+    facts.stats[facts.currentNode].processed = Date.now();
     const isError: boolean = exitWith instanceof Error;
     if (isError) {
       facts.rollbacks.forEach((node: NodeName) => {
@@ -92,22 +99,22 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
         this.next(node, facts);
       });
     }
-    this.options.eventEmitter.emit(facts.id, isError ? exitWith : undefined, facts.data);
+    this.options.eventEmitter.emit(facts.id, isError ? exitWith : undefined, facts.data, facts.stats);
   }
 
   public retry(node: NodeName, facts: Facts<DataType, NodeName>, error?: Error) {
     facts.inUse.delete(node);
-    const meta = facts.meta.get(node);
+    const meta = facts.meta[node];
     const { retries, retriesLimit } = meta;
     if (retries < retriesLimit && !facts.used) {
-      meta.retries = meta.retries || 0;
+      meta.retries = meta.retries || 1;
       meta.retries += 1;
-      facts.stats.retries.set(node, meta.retries);
+      facts.stats[node].retries = (facts.stats[node].retries || 1) + 1;
       meta.retrying = true;
       return this.next(node, facts);
     }
     facts.failedNodes.add(node);
-    facts.nodeErrors.set(node, error);
+    facts.nodeErrors[node] = error.message;
     if (meta.rollbackWhenErrorNode) {
       facts.activeCompensator.add(meta.rollbackWhenErrorNode);
       if (meta.rollbackWhenSuccessNode) {
@@ -115,6 +122,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
       }
       return this.next(meta.rollbackWhenErrorNode as NodeName, facts);
     }
+    facts.stats[facts.currentNode].errors.push(`Exceeded the limit of retries at '${node}' node`);
     this.exit(facts, error || new Error(`Exceeded the limit of retries at '${node}' node`));
   }
 }

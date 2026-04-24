@@ -23,14 +23,16 @@ export class QueueProcessor<DataType, NodeName extends string> {
       executor: async () => {
         const item: Facts<DataType, NodeName> = queue.dequeue();
         if (item) {
+          item.currentNode = this.name;
           if (item.status === FactsStatus.ENQUEUED) {
             item.status = FactsStatus.PROCESSING;
-            item.stats[FactsStatus.PROCESSING] = new Date().getTime();
           }
-          const meta = item.meta.get(this.name);
+          item.stats[this.name] = item.stats[this.name] || { retries: 0, enqueued: Date.now(), errors: [] };
+          const meta = item.meta[this.name];
           const { executeAfter, expireAfter, retries, retriesLimit, timeoutBetweenRetries, lastRetryTime } = meta;
-          const now = new Date().getTime();
+          const now = Date.now();
           if (expireAfter && expireAfter < now) {
+            item.stats[this.name].errors.push(`Facts ${item.id} was expired`);
             framework.exit(item, new Error(`Facts ${item.id} was expired`));
           }
           if (executeAfter && executeAfter > now) {
@@ -46,7 +48,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
             }, timeoutBetweenRetries || 0);
             return;
           }
-          meta.lastRetryTime = new Date().getTime();
+          meta.lastRetryTime = Date.now();
           try {
             const middlewares = this.middleware.get(this.name) || [];
             for (const m of middlewares) {
@@ -55,12 +57,12 @@ export class QueueProcessor<DataType, NodeName extends string> {
                 (node: NodeName | NodeName[]) => {
                   item.inUse.delete(this.name);
                   item.processedNodes.add(this.name);
-                  item.meta.delete(this.name);
+                  delete item.meta[this.name];
                   framework.next(node, item);
                 },
                 (error?: Error | NodeName | NodeName[]) => {
                   if (error instanceof Error) {
-                    item.meta.delete(this.name);
+                    delete item.meta[this.name];
                     item.failedNodes.add(this.name);
                   }
                   framework.exit(item, error);
@@ -101,8 +103,9 @@ export class QueueProcessor<DataType, NodeName extends string> {
             if (!item.error) {
               item.error = error;
             }
-            const meta = item.meta.get(this.name);
-            item.nodeErrors.set(this.name, error);
+            const meta = item.meta[this.name];
+            item.nodeErrors[this.name] = error.message;
+            item.stats[this.name].errors.push(error.message);
             if (meta.retries < meta.retriesLimit) {
               setTimeout(() => {
                 meta.retrying = true;
@@ -111,7 +114,7 @@ export class QueueProcessor<DataType, NodeName extends string> {
               return;
             }
             item.failedNodes.add(this.name);
-            item.meta.delete(this.name);
+            delete item.meta[this.name];
             if (meta.rollbackWhenErrorNode) {
               item.activeCompensator.add(meta.rollbackWhenErrorNode);
               if (meta.rollbackWhenSuccessNode) {
