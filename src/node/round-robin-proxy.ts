@@ -93,4 +93,8 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
   process(facts: Facts<DataType, NodeName>): number {
     return this.queue.enqueue(facts);
   }
+
+  stopProcessing(): void {
+    this.nodes.forEach((node: Node<DataType, NodeName>) => node.stopProcessing());
+  }
 }

@@ -9,6 +9,7 @@ import { validateAddNodeParams, validateFactsMeta, validateSagaOptions } from '@
 import { FactsStats } from '../parameters/facts-stats';
 
 export class Saga<DataType, NodeName extends string> {
+  private static instances: Saga<any, any>[] = [];
   protected options: SagaOptions;
   protected eventEmitter: EventEmitter;
   protected nodes: Map<NodeName, Processor<DataType, NodeName>>;
@@ -32,6 +33,15 @@ export class Saga<DataType, NodeName extends string> {
       logger: this.options.logger,
       meta: this.meta,
     });
+    Saga.instances.push(this);
+  }
+
+  public static terminate() {
+    Saga.instances.forEach((saga: Saga<any, any>) => saga.stop());
+  }
+
+  public stop() {
+    this.nodes.forEach((processor: Processor<DataType, NodeName>) => processor.stopProcessing());
   }
 
   public addMiddleware(nodes: NodeName[], middlewares: Middleware<DataType, NodeName>[]) {

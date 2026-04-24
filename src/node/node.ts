@@ -4,7 +4,7 @@ import { Executor, Middleware } from '@parameters';
 
 export class Node<DataType, NodeName extends string> {
   private readonly queue: Queue<DataType, NodeName>;
-  private readonly queueProcessor: QueueProcessor<DataType, NodeName>;
+  private readonly queueProcessor: QueueProcessor<DataType, string>;
   protected middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
 
   constructor(nodeOptions: NodeOptions<DataType, NodeName>) {
