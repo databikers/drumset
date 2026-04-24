@@ -9,7 +9,7 @@ const facts = {
   from: 'b',
 };
 
-const saga = new Saga();
+const saga = new Saga({ verbose: true });
 
 saga.addNode(
   'A',
@@ -293,7 +293,8 @@ saga.addMiddleware(
 
 setTimeout(() => {
   console.log(calls);
-}, 10000);
+  Saga.terminate();
+}, 5000);
 
 saga
   .process('A', facts)
