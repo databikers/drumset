@@ -93,10 +93,14 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
     } else {
       const nodes = Array.isArray(exitWith) ? exitWith : [exitWith];
       nodes.forEach((node: NodeName) => {
-        facts.afterPivotSucceed.add(node);
+        if (node) {
+          facts.afterPivotSucceed.add(node);
+        }
       });
       nodes.forEach((node: NodeName) => {
-        this.next(node, facts);
+        if (node) {
+          this.next(node, facts);
+        }
       });
     }
     this.options.eventEmitter.emit(facts.id, isError ? exitWith : undefined, facts.data, facts.stats);
@@ -106,7 +110,7 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
     facts.inUse.delete(node);
     const meta = facts.meta[node];
     const { retries, retriesLimit } = meta;
-    if (retries < retriesLimit && !facts.used) {
+    if (node && retries < retriesLimit && !facts.used) {
       meta.retries = meta.retries || 1;
       meta.retries += 1;
       facts.stats[node].retries = (facts.stats[node].retries || 1) + 1;
@@ -114,7 +118,9 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
       return this.next(node, facts);
     }
     facts.failedNodes.add(node);
-    facts.nodeErrors[node] = error.message;
+    if (error) {
+      facts.nodeErrors[node] = error?.message;
+    }
     if (meta.rollbackWhenErrorNode) {
       facts.activeCompensator.add(meta.rollbackWhenErrorNode);
       if (meta.rollbackWhenSuccessNode) {
