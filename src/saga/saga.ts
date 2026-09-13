@@ -1,11 +1,10 @@
 import { EventEmitter } from 'events';
-import { v4 } from 'uuid';
 import { SagaOptions, Scaling } from '@options';
 import { Executor, Facts, FactsMetaContract, Middleware, NodeMeta } from '@parameters';
 import { defaultSagaOptions, defaultScaling, FactsStatus } from '@const';
 import { Framework, FrameworkInterface } from '@framework';
 import { Processor, RoundRobinProxy } from '@node';
-import { validateAddNodeParams, validateFactsMeta, validateSagaOptions } from '@helper';
+import { validateAddNodeParams, validateFactsMeta, validateSagaOptions, v4 } from '@helper';
 import { FactsStats } from '../parameters/facts-stats';
 
 export class Saga<DataType, NodeName extends string> {
