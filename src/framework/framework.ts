@@ -1,80 +1,91 @@
-import { defaultFactsMeta, FactsStatus } from '@const';
+import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY } from '@const';
 import { FrameworkOptions } from '@options';
-import { Facts, FactsMeta, FactsMetaContract, NodeMeta } from '@parameters';
+import { Facts, NodeExecution, NodeMeta } from '@parameters';
 import { FrameworkInterface } from './framework-interface';
 
 export class Framework<DataType, NodeName extends string> implements FrameworkInterface<DataType, NodeName> {
   protected options: FrameworkOptions<DataType, NodeName>;
+
   constructor(frameworkOptions: FrameworkOptions<DataType, NodeName>) {
     this.options = frameworkOptions;
   }
 
-  public next(node: NodeName | NodeName[], facts: Facts<DataType, NodeName>) {
-    facts.stats[facts.currentNode].processed = Date.now();
-    let nodes = Array.isArray(node) ? node.filter((item: any) => typeof item === 'string' && item) : [node];
-    nodes = nodes.filter((item: any) => typeof item === 'string' && item);
-    if (!nodes.length) {
-      const errorMessage: string = 'next function requires a non-empty array/string';
-      facts.stats[facts.currentNode].errors.push(errorMessage);
-      return this.exit(facts, new Error(errorMessage));
+  public nodeMeta(node: NodeName): NodeMeta | undefined {
+    return this.options.meta.get(node);
+  }
+
+  public execution(node: NodeName, facts: Facts<DataType, NodeName>): NodeExecution<NodeName> {
+    const existing = facts.meta.nodes[node];
+    if (existing) {
+      return existing;
     }
-    if (facts) {
-      for (const n of nodes) {
-        if (!this.options.nodes.has(n)) {
-          facts.stats[facts.currentNode].errors.push(`Node ${n} doesn't exist`);
-          return this.exit(facts, new Error(`Node ${n} doesn't exist`));
+    const nodeMeta = this.nodeMeta(node);
+    // The start node takes the fact-level limit; other nodes use their own limit first.
+    const maxRetries =
+      node === facts.meta.startNode
+        ? (facts.meta.maxRetries ?? nodeMeta?.retriesLimit ?? DEFAULT_MAX_RETRIES)
+        : (nodeMeta?.retriesLimit ?? facts.meta.maxRetries ?? DEFAULT_MAX_RETRIES);
+    const execution: NodeExecution<NodeName> = {
+      node,
+      status: 'queued',
+      attempts: 0,
+      retries: 0,
+      maxRetries,
+      retryDelay: nodeMeta?.timeoutBetweenRetries ?? DEFAULT_RETRY_DELAY,
+      enqueuedAt: Date.now(),
+      // Declared up front (undefined is left out of JSON) so serialized records keep this key order.
+      startedAt: undefined,
+      finishedAt: undefined,
+      durationMs: undefined,
+      totalDurationMs: 0,
+      nextAttemptAt: undefined,
+      waitingFor: undefined,
+      errors: [],
+    };
+    facts.meta.nodes[node] = execution;
+    return execution;
+  }
+
+  public next(node: NodeName | NodeName[], facts: Facts<DataType, NodeName>) {
+    const nodes = (Array.isArray(node) ? node : [node]).filter((item: any) => typeof item === 'string' && item);
+    if (!nodes.length) {
+      return this.exit(facts, this.recordError(facts, new Error('next function requires a non-empty array/string')));
+    }
+    for (const n of nodes) {
+      if (!this.options.nodes.has(n)) {
+        return this.exit(facts, this.recordError(facts, new Error(`Node ${n} doesn't exist`)));
+      }
+      if (
+        facts.processedNodes.has(n) ||
+        (facts.used && !facts.rollbacks.has(n) && !facts.activeCompensator.has(n) && !facts.afterPivotSucceed.has(n))
+      ) {
+        if (facts.used && this.options.verbose) {
+          this.options.logger.log(`Saga has been finished for facts: ${facts.id}, node: ${n}`);
         }
-        if (
-          facts.processedNodes.has(n) ||
-          (facts.used && !facts.rollbacks.has(n) && !facts.activeCompensator.has(n) && !facts.afterPivotSucceed.has(n))
-        ) {
+        continue;
+      }
+      const nodeMeta = this.nodeMeta(n);
+      if (nodeMeta?.runAfterNodesSucceed?.length) {
+        const pending = nodeMeta.runAfterNodesSucceed.filter((name) => !facts.processedNodes.has(name as NodeName));
+        if (pending.length) {
+          const failed = nodeMeta.runAfterNodesSucceed.find((name) => facts.failedNodes.has(name as NodeName));
+          if (failed) {
+            const message = facts.nodeErrors[failed as NodeName];
+            return this.exit(facts, message ? new Error(message) : undefined);
+          }
+          const execution = this.execution(n, facts);
+          execution.status = 'waiting';
+          execution.waitingFor = pending as NodeName[];
+          this.touch(facts);
           continue;
         }
-        const nodeMeta: NodeMeta = this.options.meta.get(n);
-        if (nodeMeta?.runAfterNodesSucceed?.length) {
-          const needWait: boolean = nodeMeta?.runAfterNodesSucceed.some(
-            (name: NodeName) => !facts.processedNodes.has(name),
-          );
-          if (needWait) {
-            const needExit: boolean = nodeMeta?.runAfterNodesSucceed.some((name: NodeName) =>
-              facts.failedNodes.has(name),
-            );
-            if (needExit) {
-              const [errorNode] =
-                nodeMeta?.runAfterNodesSucceed.filter((name: NodeName) => facts.failedNodes.has(name)) || [];
-              return this.exit(
-                facts,
-                errorNode ? new Error(facts.nodeErrors[errorNode as NodeName] as string) : undefined,
-              );
-            }
-            continue;
-          }
-        }
-        if (!facts.meta[n]) {
-          facts.meta[n] = {
-            ...defaultFactsMeta,
-            ...nodeMeta,
-            node: n,
-          } as FactsMetaContract<NodeName>;
-        } else {
-          facts.meta[n].node = n;
-        }
-        const meta = facts.meta[n];
-        meta.retrying = false;
-        const { id } = facts;
-        if (
-          (!facts.inUse.size || nodes.includes(n)) &&
-          (!facts.used || facts.activeCompensator.has(n) || facts.rollbacks.has(n) || facts.afterPivotSucceed.has(n))
-        ) {
-          facts.inUse.add(n);
-          meta.lastRetryTime = Date.now();
-          this.options.nodes.get(n).process(facts);
-        } else if (facts.used && this.options.verbose) {
-          this.options.logger.log(`Saga has been finished for facts: ${id}, node: ${n})`);
-        } else if (facts.inUse.size && this.options.verbose) {
-          this.options.logger.log(`Facts ${id} has being taken already, ${n}, node: ${n})`);
-        }
       }
+      const execution = this.execution(n, facts);
+      execution.status = 'queued';
+      execution.waitingFor = undefined;
+      facts.inUse.add(n);
+      this.touch(facts);
+      this.options.nodes.get(n).process(facts);
     }
   }
 
@@ -83,52 +94,100 @@ export class Framework<DataType, NodeName extends string> implements FrameworkIn
       return;
     }
     facts.used = true;
-    facts.status = FactsStatus.PROCESSED;
-    facts.stats[facts.currentNode].processed = Date.now();
-    const isError: boolean = exitWith instanceof Error;
+    const now = Date.now();
+    const isError = exitWith instanceof Error;
+    const { meta } = facts;
+    meta.finishedAt = now;
+    meta.durationMs = now - meta.createdAt;
     if (isError) {
-      facts.rollbacks.forEach((node: NodeName) => {
-        this.next(node, facts);
-      });
+      if (meta.status !== 'expired') {
+        meta.status = 'failed';
+      }
+      meta.error = meta.error || { message: (exitWith as Error).message, node: meta.currentNode, at: now };
     } else {
-      const nodes = Array.isArray(exitWith) ? exitWith : [exitWith];
-      nodes.forEach((node: NodeName) => {
-        if (node) {
-          facts.afterPivotSucceed.add(node);
-        }
-      });
-      nodes.forEach((node: NodeName) => {
-        if (node) {
-          this.next(node, facts);
-        }
-      });
+      meta.status = 'completed';
     }
-    this.options.eventEmitter.emit(facts.id, isError ? exitWith : undefined, facts.data, facts.stats);
+    this.touch(facts);
+    if (isError) {
+      facts.rollbacks.forEach((node: NodeName) => this.next(node, facts));
+    } else {
+      const nodes = (Array.isArray(exitWith) ? exitWith : [exitWith]).filter(Boolean) as NodeName[];
+      nodes.forEach((node) => facts.afterPivotSucceed.add(node));
+      nodes.forEach((node) => this.next(node, facts));
+    }
+    this.options.eventEmitter.emit(facts.id, isError ? exitWith : undefined, facts);
+    this.settle(facts);
   }
 
   public retry(node: NodeName, facts: Facts<DataType, NodeName>, error?: Error) {
-    facts.inUse.delete(node);
-    const meta = facts.meta[node];
-    const { retries, retriesLimit } = meta;
-    if (node && retries < retriesLimit && !facts.used) {
-      meta.retries = meta.retries || 1;
-      meta.retries += 1;
-      facts.stats[node].retries = (facts.stats[node].retries || 1) + 1;
-      meta.retrying = true;
-      return this.next(node, facts);
+    const execution = this.execution(node, facts);
+    const now = Date.now();
+    if (error) {
+      this.addError(execution, error, now);
     }
+    if (execution.retries < execution.maxRetries && !facts.used) {
+      execution.retries += 1;
+      execution.status = 'retrying';
+      execution.nextAttemptAt = now + execution.retryDelay;
+      this.touch(facts);
+      return this.schedule(node, facts, execution.nextAttemptAt);
+    }
+    facts.inUse.delete(node);
+    execution.status = 'failed';
     facts.failedNodes.add(node);
     if (error) {
-      facts.nodeErrors[node] = error?.message;
+      facts.nodeErrors[node] = error.message;
     }
-    if (meta.rollbackWhenErrorNode) {
-      facts.activeCompensator.add(meta.rollbackWhenErrorNode);
-      if (meta.rollbackWhenSuccessNode) {
-        facts.rollbacks.delete(meta.rollbackWhenSuccessNode);
+    const { rollbackWhenErrorNode, rollbackWhenSuccessNode } = this.nodeMeta(node) || {};
+    if (rollbackWhenErrorNode) {
+      facts.activeCompensator.add(rollbackWhenErrorNode as NodeName);
+      if (rollbackWhenSuccessNode) {
+        facts.rollbacks.delete(rollbackWhenSuccessNode as NodeName);
       }
-      return this.next(meta.rollbackWhenErrorNode as NodeName, facts);
+      this.next(rollbackWhenErrorNode as NodeName, facts);
+    } else {
+      const reason = error || new Error(`Exceeded the limit of retries at '${node}' node`);
+      if (!error) {
+        this.addError(execution, reason, now);
+      }
+      this.exit(facts, reason);
     }
-    facts.stats[facts.currentNode].errors.push(`Exceeded the limit of retries at '${node}' node`);
-    this.exit(facts, error || new Error(`Exceeded the limit of retries at '${node}' node`));
+    this.settle(facts);
+  }
+
+  public schedule(node: NodeName, facts: Facts<DataType, NodeName>, at: number) {
+    const timer = setTimeout(
+      () => {
+        facts.timers.delete(timer);
+        facts.inUse.delete(node);
+        this.next(node, facts);
+        this.settle(facts);
+      },
+      Math.max(0, at - Date.now()),
+    );
+    facts.timers.add(timer);
+  }
+
+  public settle(facts: Facts<DataType, NodeName>) {
+    if (facts.used && !facts.inUse.size && !facts.timers.size) {
+      this.options.onSettled(facts);
+    }
+  }
+
+  protected addError(execution: NodeExecution<NodeName>, error: Error, at: number) {
+    execution.errors.push({ message: error.message, node: execution.node, attempt: execution.attempts, at });
+  }
+
+  /** Records an error on the node that is currently running (routing errors). */
+  protected recordError(facts: Facts<DataType, NodeName>, error: Error): Error {
+    const execution = facts.meta.nodes[facts.meta.currentNode];
+    if (execution) {
+      this.addError(execution, error, Date.now());
+    }
+    return error;
+  }
+
+  protected touch(facts: Facts<DataType, NodeName>) {
+    facts.meta.updatedAt = Date.now();
   }
 }

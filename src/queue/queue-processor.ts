@@ -1,152 +1,220 @@
 import { QueueProcessorOptions } from '@options';
-import { Facts, Middleware, PseudoIntervalParams } from '@parameters';
-import { pseudoInterval } from '@helper';
+import { Executor, Facts, Middleware, NodeExecution, NodeMeta } from '@parameters';
+import { FrameworkInterface } from '@framework';
 import { Logger } from '@logger';
-import { FactsStatus } from '@const';
+import { RoundRobinProxy } from '../node/round-robin-proxy';
+import { Queue } from './queue';
 
+/** One replica of a node: takes facts from the node's queue and runs middleware and handler on them. */
 export class QueueProcessor<DataType, NodeName extends string> {
-  public pseudoIntervalParams: PseudoIntervalParams;
-  protected logger: Logger;
-  protected verbose: boolean;
-  private readonly index: number;
   protected readonly name: NodeName;
-  protected middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
+  private readonly index: number;
+  protected readonly queue: Queue<DataType, NodeName>;
+  protected readonly executor: Executor<DataType, NodeName>;
+  protected readonly framework: FrameworkInterface<DataType, NodeName>;
+  protected readonly middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
+  protected readonly rrProxy: RoundRobinProxy<DataType, NodeName>;
+  protected readonly logger: Logger;
+  protected readonly verbose: boolean;
+  private running = true;
+  private current: Promise<void> | null = null;
 
-  constructor(queueProcessorOptions: QueueProcessorOptions<DataType, NodeName>) {
-    const { queue, executor, framework, verbose, logger, index, rrProxy, middleware } = queueProcessorOptions;
-    this.index = index;
-    this.name = queueProcessorOptions.name;
-    this.verbose = verbose;
-    this.logger = logger;
-    this.middleware = middleware;
-    this.pseudoIntervalParams = {
-      executor: async () => {
-        const item: Facts<DataType, NodeName> = queue.dequeue();
-        if (item) {
-          item.currentNode = this.name;
-          if (item.status === FactsStatus.ENQUEUED) {
-            item.status = FactsStatus.PROCESSING;
-          }
-          item.stats[this.name] = item.stats[this.name] || { retries: 0, enqueued: Date.now(), errors: [] };
-          const meta = item.meta[this.name];
-          const { executeAfter, expireAfter, retries, retriesLimit, timeoutBetweenRetries, lastRetryTime } = meta;
-          const now = Date.now();
-          if (expireAfter && expireAfter < now) {
-            item.stats[this.name].errors.push(`Facts ${item.id} was expired`);
-            framework.exit(item, new Error(`Facts ${item.id} was expired`));
-          }
-          if (executeAfter && executeAfter > now) {
-            const timeoutValueExecuteAfter = executeAfter - now;
-            setTimeout(() => {
-              framework.next(this.name, item);
-            }, timeoutValueExecuteAfter);
-            return;
-          }
-          if (meta.retrying) {
-            setTimeout(() => {
-              framework.next(this.name, item);
-            }, timeoutBetweenRetries || 0);
-            return;
-          }
-          meta.lastRetryTime = Date.now();
-          try {
-            const middlewares = this.middleware.get(this.name) || [];
-            for (const m of middlewares) {
-              await m(
-                item.data,
-                (node: NodeName | NodeName[]) => {
-                  item.inUse.delete(this.name);
-                  item.processedNodes.add(this.name);
-                  delete item.meta[this.name];
-                  framework.next(node, item);
-                },
-                (error?: Error | NodeName | NodeName[]) => {
-                  if (error instanceof Error) {
-                    delete item.meta[this.name];
-                    item.failedNodes.add(this.name);
-                  }
-                  framework.exit(item, error);
-                },
-              );
-            }
-            item.enqueuedNodes.add(this.name);
-            await executor(
-              item.data,
-              (node: NodeName | NodeName[]) => {
-                item.inUse.delete(this.name);
-                item.processedNodes.add(this.name);
-                if (meta.rollbackWhenSuccessNode) {
-                  item.rollbacks.add(meta.rollbackWhenSuccessNode);
-                }
-                framework.next(node, item);
-              },
-              (error?: Error | NodeName | NodeName[]) => {
-                if (error instanceof Error) {
-                  if (meta.rollbackWhenErrorNode) {
-                    item.activeCompensator.add(meta.rollbackWhenErrorNode);
-                  }
-                }
-                framework.exit(item, error);
-              },
-              (error?: Error) => {
-                setTimeout(() => {
-                  meta.retrying = true;
-                  framework.retry(this.name, item, error);
-                }, timeoutBetweenRetries || 0);
-              },
-              item.error,
-            );
-            if (item.rollbacks.has(this.name)) {
-              item.processedNodes.add(this.name);
-            }
-          } catch (error) {
-            if (!item.error) {
-              item.error = error;
-            }
-            const meta = item.meta[this.name];
-            item.nodeErrors[this.name] = error.message;
-            item.stats[this.name].errors.push(error.message);
-            if (meta.retries < meta.retriesLimit) {
-              setTimeout(() => {
-                meta.retrying = true;
-                framework.retry(this.name, item);
-              }, timeoutBetweenRetries || 0);
-              return;
-            }
-            item.failedNodes.add(this.name);
-            delete item.meta[this.name];
-            if (meta.rollbackWhenErrorNode) {
-              item.activeCompensator.add(meta.rollbackWhenErrorNode);
-              if (meta.rollbackWhenSuccessNode) {
-                item.rollbacks.delete(meta.rollbackWhenSuccessNode);
-              }
-              framework.next(meta.rollbackWhenErrorNode, item);
-            } else {
-              framework.exit(item, error);
-            }
-          } finally {
-            if (!rrProxy.rebalanced) {
-              rrProxy.scalingUp();
-            }
-          }
-        } else {
-          if (!rrProxy.downScaled) {
-            rrProxy.scalingDown();
-          }
-        }
-      },
-      isRan: true,
-      doExit: false,
-      interval: 0,
-    };
-    pseudoInterval(this.pseudoIntervalParams);
+  constructor(options: QueueProcessorOptions<DataType, NodeName>) {
+    this.name = options.name;
+    this.index = options.index;
+    this.queue = options.queue;
+    this.executor = options.executor;
+    this.framework = options.framework;
+    this.middleware = options.middleware;
+    this.rrProxy = options.rrProxy;
+    this.logger = options.logger;
+    this.verbose = options.verbose;
+    this.loop().catch((error) => this.logger.log(`Node '${this.name}[${this.index}]' stopped on error`, error));
+  }
+
+  /** True while a handler is running. */
+  public get busy(): boolean {
+    return this.current !== null;
+  }
+
+  /** Resolves when the running handler (if any) is done. */
+  public idle(): Promise<void> {
+    return this.current || Promise.resolve();
   }
 
   public stopProcessing() {
-    this.pseudoIntervalParams.isRan = false;
-    this.pseudoIntervalParams.doExit = true;
+    if (!this.running) {
+      return;
+    }
+    this.running = false;
+    this.queue.wakeUp();
     if (this.verbose) {
       this.logger.log(`Stopped node '${this.name}[${this.index}]'`);
     }
+  }
+
+  private async loop() {
+    while (this.running) {
+      const item = this.queue.dequeue();
+      if (!item) {
+        if (!this.rrProxy.downScaled) {
+          this.rrProxy.scalingDown();
+        }
+        await this.queue.waitForItem();
+        continue;
+      }
+      this.current = this.handle(item);
+      try {
+        await this.current;
+      } finally {
+        this.current = null;
+        if (!this.rrProxy.rebalanced) {
+          this.rrProxy.scalingUp();
+        }
+      }
+    }
+  }
+
+  protected async handle(item: Facts<DataType, NodeName>) {
+    const { framework, name } = this;
+    const { meta } = item;
+    const execution = framework.execution(name, item);
+    const now = Date.now();
+
+    if (meta.expiresAt && meta.expiresAt < now) {
+      const error = new Error(`Facts ${item.id} was expired`);
+      execution.errors.push({ message: error.message, node: name, attempt: execution.attempts, at: now });
+      execution.status = 'failed';
+      item.inUse.delete(name);
+      meta.status = 'expired';
+      framework.exit(item, error);
+      return;
+    }
+    if (meta.executeAfter && meta.executeAfter > now && name === meta.startNode && !execution.attempts) {
+      execution.status = 'waiting';
+      execution.nextAttemptAt = meta.executeAfter;
+      framework.schedule(name, item, meta.executeAfter);
+      return;
+    }
+
+    this.start(item, execution, now);
+    const nodeMeta: Partial<NodeMeta> = framework.nodeMeta(name) || {};
+    let routed = false;
+    const succeed = () => this.finish(item, execution, 'succeeded');
+    const fail = (error: Error) => {
+      execution.errors.push({ message: error.message, node: name, attempt: execution.attempts, at: Date.now() });
+      this.finish(item, execution, 'failed');
+    };
+
+    try {
+      for (const middleware of this.middleware.get(name) || []) {
+        await middleware(
+          item.data,
+          (node: NodeName | NodeName[]) => {
+            routed = true;
+            succeed();
+            item.inUse.delete(name);
+            item.processedNodes.add(name);
+            framework.next(node, item);
+          },
+          (exitWith?: Error | NodeName | NodeName[]) => {
+            routed = true;
+            if (exitWith instanceof Error) {
+              item.failedNodes.add(name);
+              fail(exitWith);
+            } else {
+              succeed();
+            }
+            item.inUse.delete(name);
+            framework.exit(item, exitWith);
+          },
+        );
+        // A middleware that routed the fact ends this node: the handler does not run.
+        if (routed) {
+          return;
+        }
+      }
+      await this.executor(
+        item.data,
+        (node: NodeName | NodeName[]) => {
+          succeed();
+          item.inUse.delete(name);
+          item.processedNodes.add(name);
+          if (nodeMeta.rollbackWhenSuccessNode) {
+            item.rollbacks.add(nodeMeta.rollbackWhenSuccessNode as NodeName);
+          }
+          framework.next(node, item);
+        },
+        (exitWith?: Error | NodeName | NodeName[]) => {
+          if (exitWith instanceof Error) {
+            if (nodeMeta.rollbackWhenErrorNode) {
+              item.activeCompensator.add(nodeMeta.rollbackWhenErrorNode as NodeName);
+            }
+            fail(exitWith);
+          } else {
+            succeed();
+          }
+          item.inUse.delete(name);
+          framework.exit(item, exitWith);
+        },
+        (error?: Error) => {
+          this.finish(item, execution, 'failed');
+          framework.retry(name, item, error);
+        },
+        item.error,
+      );
+      if (item.rollbacks.has(name)) {
+        item.processedNodes.add(name);
+      }
+      // Returned without next/exit/retry: the node is done.
+      if (execution.status === 'running') {
+        succeed();
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      if (!item.error) {
+        item.error = err;
+      }
+      item.nodeErrors[name] = err.message;
+      this.finish(item, execution, 'failed');
+      framework.retry(name, item, err);
+    } finally {
+      if (execution.status === 'succeeded' || execution.status === 'failed') {
+        item.inUse.delete(name);
+      }
+      framework.settle(item);
+    }
+  }
+
+  private start(item: Facts<DataType, NodeName>, execution: NodeExecution<NodeName>, now: number) {
+    const { meta } = item;
+    meta.currentNode = this.name;
+    if (!meta.path.includes(this.name)) {
+      meta.path.push(this.name);
+    }
+    if (!item.used) {
+      meta.status = 'running';
+    }
+    execution.status = 'running';
+    execution.attempts += 1;
+    execution.startedAt = now;
+    execution.finishedAt = undefined;
+    execution.durationMs = undefined;
+    execution.nextAttemptAt = undefined;
+    execution.waitingFor = undefined;
+    meta.updatedAt = now;
+  }
+
+  /** Closes the current attempt once; later calls (e.g. next() then return) are ignored. */
+  private finish(item: Facts<DataType, NodeName>, execution: NodeExecution<NodeName>, status: 'succeeded' | 'failed') {
+    if (execution.status !== 'running') {
+      return;
+    }
+    const now = Date.now();
+    execution.status = status;
+    execution.finishedAt = now;
+    execution.durationMs = now - (execution.startedAt || now);
+    execution.totalDurationMs += execution.durationMs;
+    item.meta.updatedAt = now;
   }
 }

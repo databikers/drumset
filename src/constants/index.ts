@@ -1,5 +1,4 @@
 export * from './default-saga-options';
-export * from './default-facts-meta';
+export * from './defaults';
 export * from './facts-meta-keys';
 export * from './scaling';
-export * from './facts-status';

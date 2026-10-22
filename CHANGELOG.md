@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.0.0] - 2026-10-21
+
+### added
+
+- `Fact<T>` contract (`{ id, meta, data }`) with readable, serializable metadata: status, current and active nodes,
+  path, ttl / expiry, per-node attempts, retries, durations, timings and errors (`FactMeta`, `NodeExecution`)
+- `options.storage` (`load` / `save`), `saga.restore()`, `saga.shutdown()`, `saga.snapshot()`
+- Saving on SIGTERM / SIGINT / SIGHUP and when the event loop drains (`handleSignals`, `shutdownTimeout`)
+- `completed` / `failed` events on the saga instance
+- `ttl` option of `process`
+
+### changed
+
+- `retriesLimit: N` now always means N retries after the first attempt (it gave N+1 runs only for N = 1)
+- Idle node replicas wait for work instead of polling every tick (CPU at idle 8% to 0% with 10 nodes)
+- A middleware that calls `next` / `exit` stops the node; the handler no longer runs as well
+- `Saga.terminate()` returns a promise
+
+### fixed
+
+- The start node never retried
+- Finished facts and their listeners were never released (memory grew with every fact)
+- Expired facts still ran their node
+- `expireAfter` applied to the start node only
+- `addNode` without metadata threw
+
 ## [3.2.5] - 2026-04-28
 
 ### development

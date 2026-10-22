@@ -1,3 +1,5 @@
+export * from './fact';
+export * from './fact-storage';
 export * from './facts';
 export * from './facts-meta';
 export * from './node-meta';

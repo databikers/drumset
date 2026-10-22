@@ -19,8 +19,17 @@ import { Saga } from 'drumset';
 const saga = new Saga({
   verbose: true,
   logger: console,
+  storage, // optional, see "Persistence"
 });
 ```
+
+Options:
+
+- `verbose` (boolean, default `false`): log scaling, shutdown and finished facts.
+- `logger` (object with `log`, default `console`).
+- `storage` (`FactStorage`, optional): saves unfinished facts on shutdown and loads them in `restore()`.
+- `handleSignals` (boolean, default `true` when `storage` is set): save on SIGTERM / SIGINT / SIGHUP and when the event loop drains.
+- `shutdownTimeout` (number, ms, default `10000`): how long `shutdown()` waits for running handlers before saving anyway.
 
 ### Saga instance methods:
 
@@ -37,7 +46,7 @@ Adds a node to the saga.
     - `retry` (function): A function to retry processing of the facts on the current node.
     - `error` (Error, optional): An error that caused first.
   - `meta` (object, optional): Additional processing options for the node.
-    - `retriesLimit` (number): The maximum number of retries for the node.
+    - `retriesLimit` (number, default 1): How many times the node is retried after its first attempt (so `2` means up to 3 runs).
     - `timeoutBetweenRetries` (number): The time in milliseconds to wait between retries.
     - `rollbackWhenErrorNode` (string): The name of the node to call for compensation if this node fails.
     - `rollbackWhenSuccessNode` (string): The name of the node to call for rollback if this node succeeded but something went wrong in the execution chain after.
@@ -66,7 +75,8 @@ Starts the saga from the specified node.
   - `factsMeta` (object, optional): Initial meta specific for current facts
     - `executeAfter` (number): The timestamp in milliseconds after which fact processing should start.
     - `expireAfter` (number): The timestamp in milliseconds when facts should be expired and execution chain should be stopped.
-    - `retriesLimit` (number): The maximum number of retries for the facts.
+    - `ttl` (number): Time to live in milliseconds from now (the earlier of `ttl` and `expireAfter` wins).
+    - `retriesLimit` (number): Retries for the start node, and the default for nodes that don't set their own.
 - **Returns:**
   - `Promise`: Resolves with the final state (the same contract you defined for the facts argument) of the saga or rejects with an error.
 
@@ -356,6 +366,69 @@ saga
   });
 ```
 
+### Facts
+
+Every call of `process` creates a fact: `{ id, meta, data }`. `data` is your object; `meta` describes
+the execution and is plain JSON:
+
+```typescript
+import { Fact, FactMeta, NodeExecution } from 'drumset';
+
+type Fact<DataType, NodeName extends string> = {
+  id: string;
+  meta: FactMeta<NodeName>;
+  data: DataType;
+};
+```
+
+`meta` holds:
+
+- `status`: `pending`, `running`, `completed`, `failed` or `expired`
+- `startNode`, `currentNode` (started most recently), `activeNodes` (queued, running, waiting or retrying now), `path` (order nodes first ran in)
+- `createdAt`, `updatedAt`, `finishedAt`, `durationMs`, `ttl`, `expiresAt`, `executeAfter`, `maxRetries`, `error`
+- `nodes`: per node `status`, `attempts`, `retries` / `maxRetries`, `retryDelay`, `enqueuedAt`, `startedAt`, `finishedAt`,
+  `durationMs` (last attempt), `totalDurationMs`, `nextAttemptAt`, `waitingFor` and every error with its attempt and time
+- `flow`: the saga's control state (processed, failed, rollbacks, compensators, after-exit nodes) used to resume a fact
+
+Finished facts are emitted as events:
+
+```javascript
+saga.on('completed', (fact) => console.log(fact.meta.durationMs));
+saga.on('failed', (fact, error) => console.log(fact.meta.nodes));
+```
+
+### Persistence
+
+Give the saga a storage with two async methods. Where the facts go is up to you:
+
+```javascript
+const fs = require('fs/promises');
+
+const storage = {
+  async load() {
+    return JSON.parse(await fs.readFile('facts.json', 'utf8').catch(() => '[]'));
+  },
+  async save(facts) {
+    await fs.writeFile('facts.json', JSON.stringify(facts));
+  },
+};
+
+const saga = new Saga({ storage });
+// ...addNode calls...
+await saga.restore(); // resumes facts saved by the previous process
+```
+
+- `saga.shutdown()` stops taking new work, waits for running handlers (up to `shutdownTimeout`) and calls
+  `storage.save` with every unfinished fact. Pending retries and delays are saved with their `nextAttemptAt` and resumed on time.
+- `Saga.terminate()` shuts down every saga.
+- With `handleSignals` (default when `storage` is set), SIGTERM, SIGINT and SIGHUP trigger the shutdown, then the process exits
+  as it normally would for that signal. If your application listens to the signal itself, it decides when to exit.
+  A second signal during the shutdown exits immediately. When the event loop drains, unfinished facts are saved too.
+- `process.exit()` can't wait for async work: call `await Saga.terminate()` before it.
+- A node that was running at shutdown runs again after `restore()`, so handlers should be idempotent.
+- `restore()` keeps facts that reference nodes the saga doesn't have, and saves them again instead of dropping them.
+- `saga.snapshot()` returns the unfinished facts at any time.
+
 ### Middlewares
 
 ```typescript
@@ -371,6 +444,8 @@ saga.addMiddleware(
   ],
 );
 ```
+
+A middleware that calls `next` or `exit` ends the node: the following middlewares and the handler don't run.
 
 ### Node Definitions
 

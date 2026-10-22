@@ -1,27 +1,19 @@
 import { NodeOptions } from '@options';
-import { Queue, QueueProcessor } from '@queue';
-import { Executor, Middleware } from '@parameters';
+import { QueueProcessor } from '@queue';
 
 export class Node<DataType, NodeName extends string> {
-  private readonly queue: Queue<DataType, NodeName>;
-  private readonly queueProcessor: QueueProcessor<DataType, string>;
-  protected middleware: Map<NodeName, Middleware<DataType, NodeName>[]>;
+  private readonly queueProcessor: QueueProcessor<DataType, NodeName>;
 
   constructor(nodeOptions: NodeOptions<DataType, NodeName>) {
-    const { executor, framework, verbose, logger, queue, index, middleware } = nodeOptions;
-    this.queue = queue;
-    this.middleware = middleware;
-    this.queueProcessor = new QueueProcessor({
-      name: nodeOptions.name,
-      queue,
-      executor,
-      framework,
-      middleware,
-      verbose,
-      logger,
-      rrProxy: nodeOptions.rrProxy,
-      index: index,
-    });
+    this.queueProcessor = new QueueProcessor<DataType, NodeName>(nodeOptions);
+  }
+
+  public get busy(): boolean {
+    return this.queueProcessor.busy;
+  }
+
+  public idle(): Promise<void> {
+    return this.queueProcessor.idle();
   }
 
   public stopProcessing() {

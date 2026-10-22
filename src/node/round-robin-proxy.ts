@@ -8,6 +8,8 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
   private readonly addNodeOptions: AddNodeOptions<DataType, NodeName>;
   private readonly queue: Queue<DataType, NodeName>;
   private readonly nodes: Node<DataType, NodeName>[];
+  /** Scaled-down replicas that may still be finishing a handler. */
+  private readonly draining = new Set<Node<DataType, NodeName>>();
   private currentIndex: number;
 
   constructor(addNodeOptions: AddNodeOptions<DataType, NodeName>) {
@@ -72,6 +74,10 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
     ) {
       const [node] = this.nodes.splice(this.nodes.length - 1, 1);
       node.stopProcessing();
+      if (node.busy) {
+        this.draining.add(node);
+        node.idle().finally(() => this.draining.delete(node));
+      }
       if (this.addNodeOptions.verbose) {
         this.addNodeOptions.logger.log(`Scaled down node "${this.addNodeOptions.name}: (to ${this.nodes.length})`);
       }
@@ -96,5 +102,14 @@ export class RoundRobinProxy<DataType, NodeName extends string> implements Proce
 
   stopProcessing(): void {
     this.nodes.forEach((node: Node<DataType, NodeName>) => node.stopProcessing());
+  }
+
+  async idle(): Promise<void> {
+    await Promise.all(
+      [
+        ...this.nodes,
+        ...this.draining,
+      ].map((node) => node.idle()),
+    );
   }
 }

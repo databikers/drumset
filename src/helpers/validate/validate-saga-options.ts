@@ -14,4 +14,20 @@ export function validateSagaOptions(options: SagaOptions): void {
   ) {
     throw new Error(`SagaOptions.logger.log should be a function`);
   }
+  if (
+    hasProperty(options, 'storage') &&
+    options.storage !== undefined &&
+    (typeof options.storage?.load !== 'function' || typeof options.storage?.save !== 'function')
+  ) {
+    throw new Error(`SagaOptions.storage should have async load() and save(facts) methods`);
+  }
+  if (hasProperty(options, 'handleSignals') && typeof options.handleSignals !== 'boolean') {
+    throw new Error(`SagaOptions.handleSignals should be a boolean`);
+  }
+  if (
+    hasProperty(options, 'shutdownTimeout') &&
+    (typeof options.shutdownTimeout !== 'number' || !(options.shutdownTimeout >= 0))
+  ) {
+    throw new Error(`SagaOptions.shutdownTimeout should be a non-negative number`);
+  }
 }
