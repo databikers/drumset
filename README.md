@@ -51,6 +51,9 @@ Adds a node to the saga.
     - `rollbackWhenErrorNode` (string): The name of the node to call for compensation if this node fails.
     - `rollbackWhenSuccessNode` (string): The name of the node to call for rollback if this node succeeded but something went wrong in the execution chain after.
     - `runAfterNodesSucceed` (string[]): An array of node names that must succeed before this node will start.
+    - `ttl`, `expireAfter`, `executeAfter` (number): Defaults for facts started at this node, used when `process()`
+      doesn't pass them (see `process`). `expireAfter` and `executeAfter` are absolute timestamps, so they are fixed when
+      `addNode` runs; `ttl` is relative to each fact.
   - `scaling` (object, optional): Additional processing options for the node:
     - `minNodes`: The min count of concurrent nodes that use one queue.
     - `maxNodes`: The max count of concurrent nodes that use one queue. This determines how many instances of this node can run concurrently.
@@ -77,6 +80,8 @@ Starts the saga from the specified node.
     - `expireAfter` (number): The timestamp in milliseconds when facts should be expired and execution chain should be stopped.
     - `ttl` (number): Time to live in milliseconds from now (the earlier of `ttl` and `expireAfter` wins).
     - `retriesLimit` (number): Retries for the start node, and the default for nodes that don't set their own.
+    - Each of `ttl`, `expireAfter` and `executeAfter` that isn't passed is taken from the start node's `addNode` meta.
+      `retriesLimit` isn't: the start node already uses its own `retriesLimit` when none is passed.
 - **Returns:**
   - `Promise`: Resolves with the final state (the same contract you defined for the facts argument) of the saga or rejects with an error.
 

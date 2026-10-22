@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Saving on SIGTERM / SIGINT / SIGHUP and when the event loop drains (`handleSignals`, `shutdownTimeout`)
 - `completed` / `failed` events on the saga instance
 - `ttl` option of `process`
+- `ttl`, `expireAfter`, `executeAfter` in `addNode` meta: defaults for facts started at that node when `process()` doesn't pass them
 
 ### changed
 
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Expired facts still ran their node
 - `expireAfter` applied to the start node only
 - `addNode` without metadata threw
+- `ttl` / `expireAfter` / `executeAfter` / `retriesLimit` / `timeoutBetweenRetries` are validated as non-negative numbers
 
 ## [3.2.5] - 2026-04-28
 

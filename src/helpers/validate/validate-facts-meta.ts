@@ -14,4 +14,16 @@ export function validateFactsMeta(factsMeta: ProcessOptions | Partial<NodeMeta>,
       throw new Error(`Property "${key}" is not valid metadata property`);
     }
   }
+  for (const key of [
+    'ttl',
+    'expireAfter',
+    'executeAfter',
+    'retriesLimit',
+    'timeoutBetweenRetries',
+  ]) {
+    const value = (factsMeta as Record<string, unknown>)[key];
+    if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+      throw new Error(`Property "${key}" should be a non-negative number`);
+    }
+  }
 }

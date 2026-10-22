@@ -109,7 +109,16 @@ export class Saga<DataType, NodeName extends string> extends EventEmitter {
     }
     validateFactsMeta(options as any);
     const now = Date.now();
-    const { expireAfter, ttl, executeAfter, retriesLimit } = options || {};
+    // Fact options not passed to process() fall back to the start node's settings (addNode meta).
+    const nodeMeta: Partial<NodeMeta> = this.meta.get(startNode) || {};
+    const pick = <K extends 'ttl' | 'expireAfter' | 'executeAfter'>(key: K): number | undefined =>
+      options?.[key] !== undefined ? options[key] : nodeMeta[key];
+    const ttl = pick('ttl');
+    const expireAfter = pick('expireAfter');
+    const executeAfter = pick('executeAfter');
+    // Not inherited: the start node already uses its own retriesLimit, and a fact-level value
+    // would become the default of every other node.
+    const retriesLimit = options?.retriesLimit;
     const expiresAt = [
       expireAfter,
       ttl ? now + ttl : undefined,
